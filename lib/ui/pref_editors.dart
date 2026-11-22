@@ -208,7 +208,7 @@ class PrefEditor extends StatelessWidget {
             min: 100,
             max: 2500,
             divisions: 96,
-            value: prefs.budget.clamp(100, 2500),
+            value: prefs.budget.clamp(100.0, 2500.0).toDouble(),
             label: fmtMoney(prefs.budget),
             onChanged: (v) {
               prefs.budget = v;

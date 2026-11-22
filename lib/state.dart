@@ -144,7 +144,7 @@ class AppState extends ChangeNotifier {
   }
 
   void setServings(PlannedMeal m, int s) {
-    m.servings = s.clamp(1, 20);
+    m.servings = s.clamp(1, 20).toInt();
     _changed();
   }
 

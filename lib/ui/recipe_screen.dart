@@ -31,7 +31,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
     final cs = Theme.of(context).colorScheme;
 
     void setServings(int s) {
-      s = s.clamp(1, 20);
+      s = s.clamp(1, 20).toInt();
       setState(() => _servings = s);
       if (widget.planned != null) app.setServings(widget.planned!, s);
     }

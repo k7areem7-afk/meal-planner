@@ -32,7 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => step++);
   }
 
-  void _back() => setState(() => step = (step - 1).clamp(0, last));
+  void _back() => setState(() => step = (step - 1).clamp(0, last).toInt());
 
   @override
   Widget build(BuildContext context) {

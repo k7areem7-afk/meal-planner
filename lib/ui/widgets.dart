@@ -77,7 +77,7 @@ class BudgetBar extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
-                value: ratio.clamp(0.0, 1.0),
+                value: ratio.clamp(0.0, 1.0).toDouble(),
                 minHeight: 10,
                 color: color,
                 backgroundColor: cs.surfaceContainerHighest,
