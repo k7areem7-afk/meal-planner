@@ -63,7 +63,7 @@ class PrefEditor extends StatelessWidget {
     switch (section) {
       case PrefSection.store:
         return OptionGrid(
-          aspect: 2.1,
+          aspect: 1.45,
           options: [
             for (final s in app.c.stores) Option(s.id, '🏪', s.name),
           ],
@@ -202,14 +202,14 @@ class PrefEditor extends StatelessWidget {
         return _TargetEditor(prefs: prefs, onChanged: onChanged);
       case PrefSection.allergies:
         return OptionGrid(
-          aspect: 1.55,
+          aspect: 1.25,
           options: allergyOptions,
           selected: prefs.allergies,
           onTap: (k) => _toggle(prefs.allergies, k),
         );
       case PrefSection.dislikes:
         return OptionGrid(
-          aspect: 1.55,
+          aspect: 1.25,
           options: dislikeOptions,
           selected: prefs.dislikes,
           onTap: (k) => _toggle(prefs.dislikes, k),
@@ -217,7 +217,7 @@ class PrefEditor extends StatelessWidget {
       case PrefSection.appliances:
         return Column(children: [
           OptionGrid(
-            aspect: 1.55,
+            aspect: 1.25,
             options: applianceOptions,
             selected: prefs.appliances,
             onTap: (k) => _toggle(prefs.appliances, k),

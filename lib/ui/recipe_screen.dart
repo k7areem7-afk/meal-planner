@@ -41,7 +41,6 @@ class _RecipeScreenState extends State<RecipeScreen> {
         _servings ?? widget.planned?.servings ?? app.prefs.people;
     final factor = r.servings <= 0 ? 1.0 : servings / r.servings;
     final cps = app.pricing.costPerServing(r);
-    final cs = Theme.of(context).colorScheme;
     final have = app.prefs.fridge;
     final ings = r.lines
         .map((l) => (l, app.c.ingredients[l.ingId]))

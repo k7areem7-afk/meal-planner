@@ -215,7 +215,7 @@ class OptionGrid extends StatelessWidget {
       required this.selected,
       required this.onTap,
       this.columns = 2,
-      this.aspect = 1.2});
+      this.aspect = 0.98});
 
   @override
   Widget build(BuildContext context) {
