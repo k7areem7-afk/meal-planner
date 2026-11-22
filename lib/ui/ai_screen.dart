@@ -145,20 +145,18 @@ class _AiScreenState extends State<AiScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                        'عشان الذكاء الاصطناعي يكتب لك وصفات جديدة من مكوناتك، يحتاج مفتاح Gemini (مجاني):',
+                        'عشان الذكاء الاصطناعي يكتب لك وصفات جديدة من مكوناتك، اربطه بحساب قوقل (مجاني، خطوتين).',
                         style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    const Text(
-                        '1. افتح aistudio.google.com بحساب قوقل\n2. اضغط Get API key ثم Create API key\n3. انسخ المفتاح والصقه في الإعدادات',
-                        style: TextStyle(height: 1.6)),
                     const SizedBox(height: 10),
                     FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: Brand.orange),
                       onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const AiSettingsPage())),
-                      icon: const Icon(Icons.key),
-                      label: const Text('أضف المفتاح'),
+                              builder: (_) =>
+                                  const AiSettingsPage(autoOpen: true))),
+                      icon: const Icon(Icons.link),
+                      label: const Text('اربط Gemini الآن'),
                     ),
                   ],
                 ),

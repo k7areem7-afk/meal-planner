@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../ai.dart';
 import '../engine.dart';
@@ -166,31 +168,70 @@ class _Header extends StatelessWidget {
 }
 
 class AiSettingsPage extends StatefulWidget {
-  const AiSettingsPage({super.key});
+  final bool autoOpen;
+  const AiSettingsPage({super.key, this.autoOpen = false});
   @override
   State<AiSettingsPage> createState() => _AiSettingsPageState();
 }
 
-class _AiSettingsPageState extends State<AiSettingsPage> {
+class _AiSettingsPageState extends State<AiSettingsPage>
+    with WidgetsBindingObserver {
   late final TextEditingController key;
   late final TextEditingController model;
   bool hide = true;
   bool testing = false;
+  bool waiting = false; // opened Google's page, waiting for a copied key
   String? result;
+
+  static final _keyPattern = RegExp(r'AIza[0-9A-Za-z_\-]{30,}');
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final app = AppScope.read(context);
     key = TextEditingController(text: app.geminiKey);
     model = TextEditingController(text: app.geminiModel);
+    if (widget.autoOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openStudio());
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     key.dispose();
     model.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && waiting) _paste(auto: true);
+  }
+
+  Future<void> _openStudio() async {
+    setState(() => waiting = true);
+    await launchUrl(Uri.parse('https://aistudio.google.com/apikey'),
+        mode: LaunchMode.externalApplication);
+  }
+
+  /// Picks a Gemini key from the clipboard, saves it and tests it.
+  Future<void> _paste({bool auto = false}) async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final m = _keyPattern.firstMatch(data?.text ?? '');
+    if (!mounted) return;
+    if (m == null) {
+      if (!auto) {
+        setState(() => result =
+            '⚠️ ما لقينا مفتاح في الحافظة. المفتاح يبدأ بـ AIza، انسخه من صفحة قوقل وارجع.');
+      }
+      return;
+    }
+    key.text = m.group(0)!;
+    AppScope.read(context).setAi(key.text, model.text);
+    setState(() => waiting = false);
+    await _test();
   }
 
   Future<void> _test() async {
@@ -201,8 +242,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     try {
       final g = Gemini(key.text.trim(),
           model.text.trim().isEmpty ? Gemini.defaultModel : model.text.trim());
-      final t = await g.generate('رد بكلمة واحدة: تمام');
-      setState(() => result = '✓ يشتغل: ${t.trim()}');
+      await g.generate('رد بكلمة واحدة: تمام');
+      setState(() => result = '✅ تم الربط بنجاح! جرّب تبويب "اقترح لي ✨".');
     } catch (e) {
       setState(() => result = '⚠️ $e');
     } finally {
@@ -215,6 +256,59 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('الذكاء الاصطناعي')),
       body: ListView(padding: const EdgeInsets.all(20), children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('اربط Gemini في خطوتين',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 10),
+                const Text(
+                    '1. اضغط الزر تحت، بتفتح صفحة قوقل (بحسابك على الجوال).\n'
+                    '2. اضغط "Create API key". لو سألك عن مشروع، اختار أي واحد أو "Create project".\n'
+                    '3. اضغط زر النسخ جنب المفتاح وارجع للتطبيق، ونربطه تلقائياً.',
+                    style: TextStyle(height: 1.7)),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Brand.orange,
+                      minimumSize: const Size.fromHeight(52)),
+                  onPressed: _openStudio,
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('افتح صفحة المفتاح'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48)),
+                  onPressed: testing ? null : () => _paste(),
+                  icon: const Icon(Icons.content_paste),
+                  label: const Text('نسخته؟ الصقه واربط'),
+                ),
+                if (waiting)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text('⏳ ننتظرك ترجع بالمفتاح منسوخ...',
+                        style: TextStyle(color: Brand.orange)),
+                  ),
+                if (testing)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: LinearProgressIndicator(),
+                  ),
+                if (result != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(result!,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         const Text('الميزات اللي تحتاج المفتاح:',
             style: TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
@@ -222,16 +316,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
             '• 3 أو 5 وصفات جديدة من المكونات اللي عندك\n• وصفة كاملة لأي أكلة تكتب اسمها\n• شرح مفصّل لأي خطوة طبخ',
             style: TextStyle(height: 1.7)),
         const SizedBox(height: 16),
-        Card(
-          color: Brand.yellow.withValues(alpha: 0.15),
-          child: const Padding(
-            padding: EdgeInsets.all(14),
-            child: Text(
-                'كيف تجيب المفتاح (مجاني):\n1. افتح aistudio.google.com بحساب قوقل\n2. اضغط Get API key ← Create API key\n3. انسخه والصقه هنا\n\nملاحظة: اشتراك Gemini Advanced غير المفتاح. المفتاح يكون له حد استخدام مجاني يومي.',
-                style: TextStyle(height: 1.6)),
-          ),
-        ),
-        const SizedBox(height: 16),
+        const Text('أو اكتب المفتاح يدوياً:',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
         TextField(
           controller: key,
           obscureText: hide,
@@ -276,11 +363,6 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
             ),
           ),
         ]),
-        if (result != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(result!),
-          ),
         const SizedBox(height: 12),
         const Text(
             'المفتاح ينحفظ على جوالك بس، ويُرسل مباشرة لقوقل مع قائمة مكوناتك وتفضيلاتك لما تطلب وصفة.',
