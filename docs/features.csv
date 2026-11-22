@@ -1,0 +1,46 @@
+feature,area,priority,original,clone,notes
+اختيار المتجر,onboarding,must,yes,no,S02 - متاجر سعودية بدل الأمريكية
+حجم الأسرة,onboarding,must,yes,no,S03
+أنماط الأكل,onboarding,should,yes,no,S04 - أضف أنماط محلية (سعودي/خليجي)
+الحساسية (فلترة صارمة),onboarding,must,yes,no,S05 - المراجعات تشتكي من فلترة غير صارمة
+ما لا تحبه,onboarding,should,yes,no,S06
+معدات المطبخ (رسم تفاعلي),onboarding,could,yes,no,S07 - تقدر تبدأ بقائمة عادية
+شريط الميزانية الأسبوعية,onboarding,must,yes,no,S08 - بالريال
+أهداف السعرات والماكروز,onboarding,could,yes,no,S09
+معاينة الخطة قبل الالتزام,onboarding,should,yes,no,S11
+تسجيل الدخول,account,should,yes,no,S13 - مطلوب فقط للمزامنة والمشاركة
+توليد خطة أسبوعية ضمن الميزانية,plan,must,yes,no,S10 S14 - القلب
+عرض الخطة الأسبوعية ومؤشر الميزانية,plan,must,yes,no,S14
+استبدال/اقتراح وجبة,plan,must,yes,no,S15
+قفل وجبة عند إعادة التوليد,plan,should,unknown,no,مستنتج - يعالج شكوى تغيّر الخطة بعد الشراء
+إعادة ضبط الخطة,plan,should,yes,no,S32
+وضع تحضير الوجبات (حتى 5 أيام),plan,could,yes,no,S28
+تفاصيل الوصفة,recipes,must,yes,no,S16
+تغيير الحصص (المكونات والخطوات),recipes,must,partial,no,الأصلي يغيّر المكونات فقط - تفوّق عليه
+التغذية لكل حصة,recipes,should,yes,no,S16 S29
+وضع الطبخ خطوة بخطوة,recipes,should,yes,no,S17 - مع مؤقت وإبقاء الشاشة شغالة
+تصفح الوصفات والبحث والفلاتر,recipes,must,yes,no,S27
+كتب الطبخ,recipes,should,yes,no,S25 S26
+استيراد وصفة من رابط/مشاركة,recipes,should,yes,no,S23 S24 - يحتاج نموذج لغوي
+تصوير صفحة كتاب طبخ,recipes,could,yes,no,S23 - OCR + نموذج لغوي
+قائمة مشتريات تلقائية من الخطة,grocery,must,yes,no,S18
+دمج المكونات المكررة مع تحويل الوحدات,grocery,must,yes,no,S18
+التجميع حسب أقسام المتجر,grocery,must,yes,no,S18
+المجموع التقديري للقائمة,grocery,must,yes,no,S18
+إضافة عنصر يدوي,grocery,should,yes,no,S19
+مقارنة المتاجر,grocery,could,yes,no,S20
+محرّر الأسعار التقديرية بالريال,grocery,must,no,no,S34 - إضافة خاصة بالنسخة
+مسح الثلاجة واقتراح وجبات,ai,should,yes,no,S21 S22 - نموذج رؤية
+لوحة الماكروز اليومية,nutrition,could,yes,no,S29
+مشاركة الأسرة بكود دعوة,sharing,could,yes,no,S30 - يحتاج باك إند
+المزامنة بين الأجهزة,sharing,could,yes,no,موقعهم يذكرها
+الإعدادات والتفضيلات,settings,must,yes,no,S31
+حذف الحساب والبيانات,settings,should,yes,no,S33
+واجهة عربية RTL,platform,must,no,no,الأصلي إنجليزي/فرنسي/ألماني/إسباني
+مكتبة وصفات عربية خاصة,content,must,no,no,بديل مكتبتهم المملوكة
+مكتبة وصفاتهم الأصلية,content,skip,yes,no,محتوى مملوك
+الاسم والشعار والتصميم,brand,skip,yes,no,علامة مملوكة
+أسعار المتاجر الأمريكية,data,skip,yes,no,بيانات مملوكة وغير مناسبة
+الطلب أونلاين والتوصيل,grocery,skip,yes,no,شراكات - أمريكا فقط
+Paywall وتقييم وإثبات اجتماعي,monetization,skip,yes,no,غير مطلوب للاستخدام الشخصي
+التتبع الإعلاني,analytics,skip,yes,no,غير مطلوب
