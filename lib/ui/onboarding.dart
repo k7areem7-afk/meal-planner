@@ -42,7 +42,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final t = prefTitles[sec]!;
     final optional = sec == PrefSection.styles ||
         sec == PrefSection.allergies ||
-        sec == PrefSection.dislikes;
+        sec == PrefSection.dislikes ||
+        sec == PrefSection.fridge;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -163,12 +164,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             for (final m in res.meals.where((m) => m.day == day))
               Builder(builder: (_) {
                 final r = app.c.recipeById[m.recipeId]!;
+                final pot = partnerOf(res.meals, m) != null;
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: FoodTile(r.emoji, size: 44),
                   title: Text(r.title),
-                  subtitle: Text(
-                      '${slotNames[m.slot]} · ${fmtMoney(pr.costPerServing(r) * m.servings)}'),
+                  subtitle: Text(m.leftover
+                      ? '${slotNames[m.slot]} · بواقي من أمس 🍱'
+                      : '${slotNames[m.slot]} · ${fmtMoney(pr.costPerServing(r) * m.servings)}${pot ? ' · تكفي يومين' : ''}'),
                 );
               }),
           ],

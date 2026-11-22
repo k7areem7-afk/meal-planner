@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from ingredients import AISLES, ING, STORES  # noqa: E402
 from recipes import REC, STYLES  # noqa: E402
+from recipes2 import KEEP  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "assets", "data")
@@ -132,7 +133,12 @@ for r in REC:
         "nutrition": {"kcal": round(kcal / s), "protein": round(p / s, 1),
                       "carbs": round(c / s, 1), "fat": round(f / s, 1)},
         "allergens": sorted(allergens), "tags": sorted(tags),
+        "keeps": rid in KEEP,
     })
+
+for k in KEEP:
+    if k not in seen:
+        errors.append(f"KEEP has unknown recipe {k}")
 
 if errors:
     print("ERRORS:")
@@ -177,4 +183,5 @@ for m, xs in by.items():
 veg = [x for x in recipes_out if not set(x["tags"]) & {"chicken", "beef", "lamb", "fish", "seafood"}]
 print(f"  vegetarian: b {sum('b' in x['meals'] for x in veg)} l {sum('l' in x['meals'] for x in veg)} d {sum('d' in x['meals'] for x in veg)}")
 print("  top cost:", sorted(((round(cost(x), 1), x["id"]) for x in recipes_out))[-5:])
+print("  keeps:", sum(x["keeps"] for x in recipes_out), " l/d keepers:", sum(x["keeps"] and ("l" in x["meals"] or "d" in x["meals"]) for x in recipes_out))
 print("  kcal range:", min(x["nutrition"]["kcal"] for x in recipes_out), max(x["nutrition"]["kcal"] for x in recipes_out))

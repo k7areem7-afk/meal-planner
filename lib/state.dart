@@ -20,7 +20,6 @@ class AppState extends ChangeNotifier {
   List<PlannedMeal> plan = [];
   Map<String, PriceOverride> overrides = {};
   Set<String> checked = {};
-  Set<String> have = {};
   List<CustomItem> custom = [];
   bool showPantry = false;
 
@@ -60,7 +59,8 @@ class AppState extends ChangeNotifier {
     overrides = ((j['overrides'] as Map?) ?? {}).map((k, v) => MapEntry(
         k as String, PriceOverride.fromJson((v as Map).cast<String, dynamic>())));
     checked = ((j['checked'] as List?) ?? []).map((e) => e.toString()).toSet();
-    have = ((j['have'] as List?) ?? []).map((e) => e.toString()).toSet();
+    // v1 kept 'have' outside prefs; it is now the fridge.
+    prefs.fridge.addAll(((j['have'] as List?) ?? []).map((e) => e.toString()));
     custom = ((j['custom'] as List?) ?? [])
         .map((e) => CustomItem.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
@@ -74,7 +74,6 @@ class AppState extends ChangeNotifier {
         'plan': plan.map((m) => m.toJson()).toList(),
         'overrides': overrides.map((k, v) => MapEntry(k, v.toJson())),
         'checked': checked.toList(),
-        'have': have.toList(),
         'custom': custom.map((e) => e.toJson()).toList(),
         'showPantry': showPantry,
       };
@@ -91,9 +90,10 @@ class AppState extends ChangeNotifier {
 
   // ------------------------------------------------------------ plan
 
+  Set<String> get have => prefs.fridge;
+
   Planner planner([Prefs? p]) =>
-      Planner(c, p ?? prefs, Pricing(c, (p ?? prefs).storeId, overrides),
-          have: have);
+      Planner(c, p ?? prefs, Pricing(c, (p ?? prefs).storeId, overrides));
 
   PlanResult generate({bool keepLocked = true}) {
     final res = planner().generate(keep: keepLocked ? plan : const []);
@@ -113,18 +113,23 @@ class AppState extends ChangeNotifier {
   void updatePrefs(Prefs p) {
     prefs = p;
     for (final m in plan) {
-      if (!m.locked) m.servings = p.people;
+      if (m.locked) continue;
+      m.servings = m.leftover || partnerOf(plan, m) == null
+          ? p.people
+          : p.people * 2;
     }
     _changed();
   }
 
   void replaceMeal(PlannedMeal m, String recipeId) {
-    m.recipeId = recipeId;
+    applyReplace(plan, m, recipeId, c);
     _changed();
   }
 
   void addMeal(int day, String slot, String recipeId, {int? servings}) {
-    plan.removeWhere((m) => m.day == day && m.slot == slot);
+    for (final m in plan.where((m) => m.day == day && m.slot == slot).toList()) {
+      applyRemove(plan, m);
+    }
     plan.add(PlannedMeal(
         day: day,
         slot: slot,
@@ -134,12 +139,20 @@ class AppState extends ChangeNotifier {
   }
 
   void removeMeal(PlannedMeal m) {
-    plan.remove(m);
+    applyRemove(plan, m);
     _changed();
   }
 
   void toggleLock(PlannedMeal m) {
-    m.locked = !m.locked;
+    final v = !m.locked;
+    m.locked = v;
+    partnerOf(plan, m)?.locked = v;
+    originalOf(plan, m)?.locked = v;
+    _changed();
+  }
+
+  void setFridge(Set<String> items) {
+    prefs.fridge = items;
     _changed();
   }
 
@@ -166,7 +179,8 @@ class AppState extends ChangeNotifier {
   }
 
   void toggleHave(String id) {
-    have.contains(id) ? have.remove(id) : have.add(id);
+    final f = prefs.fridge;
+    f.contains(id) ? f.remove(id) : f.add(id);
     _changed();
   }
 
@@ -215,7 +229,6 @@ class AppState extends ChangeNotifier {
     plan = [];
     overrides = {};
     checked = {};
-    have = {};
     custom = [];
     showPantry = false;
     _changed();

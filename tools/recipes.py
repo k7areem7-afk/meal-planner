@@ -17,6 +17,7 @@ STYLES = [
     ("indian", "هندي"),
     ("mexican", "مكسيكي"),
     ("healthy", "صحي وخفيف"),
+    ("western", "غربي"),
 ]
 
 REC = []

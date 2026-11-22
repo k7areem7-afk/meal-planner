@@ -94,6 +94,7 @@ class Recipe {
   final double fat;
   final List<String> allergens;
   final List<String> tags;
+  final bool keeps; // fine to eat on the second day
 
   const Recipe({
     required this.id,
@@ -112,6 +113,7 @@ class Recipe {
     required this.fat,
     required this.allergens,
     required this.tags,
+    required this.keeps,
   });
 
   factory Recipe.fromJson(Map<String, dynamic> j) {
@@ -135,6 +137,7 @@ class Recipe {
       fat: _d(n['fat']),
       allergens: _strList(j['allergens']),
       tags: _strList(j['tags']),
+      keeps: j['keeps'] == true,
     );
   }
 }
@@ -198,6 +201,8 @@ class Prefs {
   Set<String> allergies;
   Set<String> dislikes;
   Set<String> appliances;
+  Set<String> fridge; // ingredients already at home
+  bool leftovers; // cook once, eat two days
 
   Prefs({
     this.storeId = 'panda',
@@ -209,11 +214,14 @@ class Prefs {
     Set<String>? allergies,
     Set<String>? dislikes,
     Set<String>? appliances,
+    Set<String>? fridge,
+    this.leftovers = true,
   })  : meals = meals ?? {'b', 'l', 'd'},
         styles = styles ?? <String>{},
         allergies = allergies ?? <String>{},
         dislikes = dislikes ?? <String>{},
-        appliances = appliances ?? {'oven'};
+        appliances = appliances ?? {'oven'},
+        fridge = fridge ?? <String>{};
 
   Prefs copy() => Prefs.fromJson(toJson());
 
@@ -227,6 +235,8 @@ class Prefs {
         'allergies': allergies.toList(),
         'dislikes': dislikes.toList(),
         'appliances': appliances.toList(),
+        'fridge': fridge.toList(),
+        'leftovers': leftovers,
       };
 
   factory Prefs.fromJson(Map<String, dynamic> j) => Prefs(
@@ -239,6 +249,8 @@ class Prefs {
         allergies: _strList(j['allergies']).toSet(),
         dislikes: _strList(j['dislikes']).toSet(),
         appliances: _strList(j['appliances']).toSet(),
+        fridge: _strList(j['fridge']).toSet(),
+        leftovers: j['leftovers'] != false,
       );
 }
 
@@ -248,6 +260,7 @@ class PlannedMeal {
   String recipeId;
   int servings;
   bool locked;
+  bool leftover; // eaten from yesterday's pot, nothing to cook or buy
 
   PlannedMeal({
     required this.day,
@@ -255,6 +268,7 @@ class PlannedMeal {
     required this.recipeId,
     required this.servings,
     this.locked = false,
+    this.leftover = false,
   });
 
   PlannedMeal copy() => PlannedMeal(
@@ -262,7 +276,8 @@ class PlannedMeal {
       slot: slot,
       recipeId: recipeId,
       servings: servings,
-      locked: locked);
+      locked: locked,
+      leftover: leftover);
 
   Map<String, dynamic> toJson() => {
         'day': day,
@@ -270,6 +285,7 @@ class PlannedMeal {
         'recipeId': recipeId,
         'servings': servings,
         'locked': locked,
+        'leftover': leftover,
       };
 
   factory PlannedMeal.fromJson(Map<String, dynamic> j) => PlannedMeal(
@@ -278,6 +294,7 @@ class PlannedMeal {
         recipeId: j['recipeId'] as String,
         servings: (j['servings'] as num).toInt(),
         locked: j['locked'] == true,
+        leftover: j['leftover'] == true,
       );
 }
 

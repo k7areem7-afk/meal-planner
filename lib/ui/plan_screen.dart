@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../engine.dart';
 import '../models.dart';
 import '../state.dart';
+import 'pref_editors.dart';
 import 'recipe_screen.dart';
 import 'widgets.dart';
 
@@ -74,7 +75,9 @@ class _PlanScreenState extends State<PlanScreen> {
           slotOrder.indexOf(a.slot).compareTo(slotOrder.indexOf(b.slot)));
     final dayCost = meals.fold<double>(0, (a, m) {
       final r = app.c.recipeById[m.recipeId];
-      return r == null ? a : a + pr.costPerServing(r) * m.servings;
+      return r == null || m.leftover
+          ? a
+          : a + pr.costPerServing(r) * m.servings;
     });
     final dayKcal = meals.fold<double>(0, (a, m) {
       final r = app.c.recipeById[m.recipeId];
@@ -85,6 +88,13 @@ class _PlanScreenState extends State<PlanScreen> {
       appBar: AppBar(
         title: const Text('خطة الأسبوع'),
         actions: [
+          IconButton(
+              tooltip: 'ثلاجتي',
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const PrefEditPage(PrefSection.fridge))),
+              icon: const Icon(Icons.kitchen_outlined)),
           IconButton(
               tooltip: 'خطة جديدة',
               onPressed: _regenerate,
@@ -202,6 +212,8 @@ class _PlanScreenState extends State<PlanScreen> {
     }
     final r = app.c.recipeById[m.recipeId]!;
     final cost = app.pricing.costPerServing(r) * m.servings;
+    final pot = partnerOf(app.plan, m) != null;
+    final hits = app.planner().fridgeHits(r);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -218,7 +230,10 @@ class _PlanScreenState extends State<PlanScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
+                  Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 2,
+                      children: [
                     Text(slotNames[slot]!,
                         style: TextStyle(
                             color: cs.primary,
@@ -228,6 +243,9 @@ class _PlanScreenState extends State<PlanScreen> {
                       const SizedBox(width: 4),
                       Icon(Icons.lock, size: 14, color: cs.primary),
                     ],
+                    if (m.leftover) const _Badge('🍱 بواقي من أمس'),
+                    if (pot) const _Badge('🍲 تكفي يومين'),
+                    if (hits > 0 && !m.leftover) _Badge('🧊 $hits من ثلاجتك'),
                   ]),
                   const SizedBox(height: 2),
                   Text(r.title,
@@ -235,7 +253,9 @@ class _PlanScreenState extends State<PlanScreen> {
                           fontSize: 16, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                      '${r.minutes} دقيقة · ${m.servings} حصص · ${fmtMoney(cost)}',
+                      m.leftover
+                          ? 'جاهزة، سخّنها بس · ${m.servings} حصص'
+                          : '${r.minutes} دقيقة · ${m.servings} حصص${pot ? ' (لليومين)' : ''} · ${fmtMoney(cost)}',
                       style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
@@ -280,6 +300,7 @@ class _PlanScreenState extends State<PlanScreen> {
       showDragHandle: true,
       builder: (ctx) => _SwapSheet(
         alts: alts,
+        leftover: m?.leftover ?? false,
         currentTotal: m == null ? null : app.total,
         budget: app.prefs.budget,
         onPick: (r) {
@@ -295,13 +316,34 @@ class _PlanScreenState extends State<PlanScreen> {
   }
 }
 
+class _Badge extends StatelessWidget {
+  final String text;
+  const _Badge(this.text);
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsetsDirectional.only(start: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: cs.tertiaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(text,
+          style: TextStyle(fontSize: 11, color: cs.onTertiaryContainer)),
+    );
+  }
+}
+
 class _SwapSheet extends StatefulWidget {
-  final List<(Recipe, double)> alts;
+  final List<Alternative> alts;
+  final bool leftover;
   final double? currentTotal;
   final double budget;
   final ValueChanged<Recipe> onPick;
   const _SwapSheet(
       {required this.alts,
+      required this.leftover,
       required this.currentTotal,
       required this.budget,
       required this.onPick});
@@ -315,7 +357,7 @@ class _SwapSheetState extends State<_SwapSheet> {
   @override
   Widget build(BuildContext context) {
     final items = widget.alts
-        .where((a) => q.isEmpty || a.$1.title.contains(q))
+        .where((a) => q.isEmpty || a.recipe.title.contains(q))
         .toList();
     final cs = Theme.of(context).colorScheme;
     return DraggableScrollableSheet(
@@ -323,6 +365,12 @@ class _SwapSheetState extends State<_SwapSheet> {
       initialChildSize: 0.75,
       maxChildSize: 0.95,
       builder: (_, ctrl) => Column(children: [
+        if (widget.leftover)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+                'هذي بواقي من طبخة أمس. لو استبدلتها، طبخة أمس بتصير لليوم الواحد بس.'),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: TextField(
@@ -342,7 +390,9 @@ class _SwapSheetState extends State<_SwapSheet> {
                   controller: ctrl,
                   itemCount: items.length,
                   itemBuilder: (_, i) {
-                    final (r, total) = items[i];
+                    final a = items[i];
+                    final r = a.recipe;
+                    final total = a.total;
                     String? delta;
                     Color? color;
                     if (widget.currentTotal != null) {
@@ -362,7 +412,8 @@ class _SwapSheetState extends State<_SwapSheet> {
                     return ListTile(
                       leading: FoodTile(r.emoji, size: 44),
                       title: Text(r.title),
-                      subtitle: Text('${r.minutes} دقيقة · ${r.kcal} سعرة'),
+                      subtitle: Text(
+                          '${r.minutes} دقيقة · ${r.kcal} سعرة${a.inPlan ? ' · موجودة بيوم ثاني' : ''}'),
                       trailing: delta == null
                           ? null
                           : Text(delta,

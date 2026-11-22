@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../engine.dart';
-import '../models.dart';
 import '../state.dart';
 import 'price_editor.dart';
 import 'widgets.dart';

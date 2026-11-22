@@ -24,7 +24,7 @@ class SettingsScreen extends StatelessWidget {
       PrefSection.budget: '${fmtMoney(p.budget)} في الأسبوع',
       PrefSection.people: '${p.people} ${p.people == 1 ? 'شخص' : 'أشخاص'}',
       PrefSection.meals:
-          slotOrder.where(p.meals.contains).map((s) => slotNames[s]!).join('، '),
+          '${slotOrder.where(p.meals.contains).map((s) => slotNames[s]!).join('، ')}${p.leftovers ? ' · طبخة تكفي يومين' : ''}',
       PrefSection.diet: dietNames[p.diet] ?? p.diet,
       PrefSection.styles: join(p.styles,
           {for (final s in app.c.styles) s.id: s.name}),
@@ -32,6 +32,8 @@ class SettingsScreen extends StatelessWidget {
       PrefSection.dislikes: join(p.dislikes, dislikeNames),
       PrefSection.appliances: join(p.appliances,
           {for (final e in applianceNames.entries) e.key: e.value.$1}),
+      PrefSection.fridge: join(p.fridge,
+          {for (final i in app.c.ingredients.values) i.id: i.name}),
     };
     const icons = {
       PrefSection.store: Icons.storefront_outlined,
@@ -43,6 +45,7 @@ class SettingsScreen extends StatelessWidget {
       PrefSection.allergies: Icons.warning_amber_outlined,
       PrefSection.dislikes: Icons.thumb_down_outlined,
       PrefSection.appliances: Icons.kitchen_outlined,
+      PrefSection.fridge: Icons.kitchen,
     };
 
     return Scaffold(
@@ -68,24 +71,6 @@ class SettingsScreen extends StatelessWidget {
           trailing: const Icon(Icons.chevron_left),
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const PriceEditor())),
-        ),
-        ListTile(
-          leading: const Icon(Icons.home_outlined),
-          title: const Text('أشياء موجودة عندي'),
-          subtitle: Text(app.have.isEmpty
-              ? 'من قائمة المشتريات: اضغط السعر ← موجود عندي'
-              : app.have
-                  .map((id) => app.c.ingredients[id]?.name ?? id)
-                  .join('، ')),
-          trailing: app.have.isEmpty
-              ? null
-              : TextButton(
-                  onPressed: () {
-                    for (final id in app.have.toList()) {
-                      app.toggleHave(id);
-                    }
-                  },
-                  child: const Text('مسح')),
         ),
         const Divider(),
         const _Header('البيانات'),
@@ -117,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
         const AboutListTile(
           icon: Icon(Icons.info_outline),
           applicationName: 'سفرة',
-          applicationVersion: '0.1.0',
+          applicationVersion: '0.2.0',
           aboutBoxChildren: [
             Text(
                 'مخطط وجبات أسبوعي بالميزانية. الأسعار والقيم الغذائية تقديرية.'),

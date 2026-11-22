@@ -50,6 +50,15 @@ class _RecipeScreenState extends State<RecipeScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
         children: [
+          if (widget.planned?.leftover ?? false)
+            Card(
+              color: cs.tertiaryContainer,
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('🍱 هذي بواقي من طبخة أمس، ما تحتاج تطبخ. سخّنها جيداً قبل الأكل.'),
+              ),
+            ),
+          if (widget.planned?.leftover ?? false) const SizedBox(height: 12),
           Center(child: FoodTile(r.emoji, size: 96)),
           const SizedBox(height: 12),
           Text(r.title,

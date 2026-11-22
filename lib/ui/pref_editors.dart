@@ -15,6 +15,7 @@ enum PrefSection {
   allergies,
   dislikes,
   appliances,
+  fridge,
   budget,
 }
 
@@ -27,6 +28,8 @@ const prefTitles = {
   PrefSection.allergies: ('عندكم حساسية من شيء؟', 'نستبعدها تماماً من كل الوصفات'),
   PrefSection.dislikes: ('أشياء ما تحبها', 'ما نقترح وصفات فيها'),
   PrefSection.appliances: ('وش عندك في المطبخ؟', 'نقترح وصفات تقدر تسويها'),
+  PrefSection.fridge: ('وش موجود عندك في الثلاجة والمطبخ؟',
+      'نقدّم الوصفات اللي تستخدمها عشان ما تخرب، وما نحسب سعرها في المشتريات'),
   PrefSection.budget: ('ميزانية الأكل الأسبوعية', 'نبني الخطة وقائمة المشتريات تحتها'),
 };
 
@@ -134,6 +137,18 @@ class PrefEditor extends StatelessWidget {
                 ]),
               ),
             ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: prefs.leftovers,
+            onChanged: (v) {
+              prefs.leftovers = v;
+              onChanged();
+            },
+            title: const Text('أطبخ مرة وتكفي يومين'),
+            subtitle: const Text(
+                'أحياناً نخلي طبخة الغداء أو العشاء تكفي لليوم الثاني، وفقط للأكلات اللي تصلح تبات في الثلاجة مثل الكبسة والمرق والمحاشي. المقلي والسلطات والسمك والبيض دايماً طازجة.'),
+          ),
         ]);
       case PrefSection.diet:
         return Column(children: [
@@ -195,6 +210,8 @@ class PrefEditor extends StatelessWidget {
               ),
           ],
         );
+      case PrefSection.fridge:
+        return FridgePicker(prefs: prefs, onChanged: onChanged);
       case PrefSection.budget:
         final meals = 7 * prefs.people * prefs.meals.length;
         final perMeal = meals == 0 ? 0.0 : prefs.budget / meals;
@@ -340,6 +357,72 @@ class _PrefEditPageState extends State<PrefEditPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class FridgePicker extends StatefulWidget {
+  final Prefs prefs;
+  final VoidCallback onChanged;
+  const FridgePicker({super.key, required this.prefs, required this.onChanged});
+  @override
+  State<FridgePicker> createState() => _FridgePickerState();
+}
+
+class _FridgePickerState extends State<FridgePicker> {
+  String q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    final f = widget.prefs.fridge;
+    final items = app.c.ingredients.values
+        .where((i) => !i.pantry && (q.isEmpty || i.name.contains(q)))
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'ابحث: دجاج، طماطم، رز...',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          onChanged: (v) => setState(() => q = v.trim()),
+        ),
+        const SizedBox(height: 8),
+        Row(children: [
+          Text(f.isEmpty ? 'ما اخترت شيء' : 'اخترت ${f.length}'),
+          const Spacer(),
+          if (f.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                f.clear();
+                widget.onChanged();
+              },
+              child: const Text('مسح الكل'),
+            ),
+        ]),
+        const Text(
+            'الملح والبهارات والزيت نفترض إنها موجودة عندك دائماً.',
+            style: TextStyle(fontSize: 12)),
+        for (final a in app.c.aisles)
+          if (items.any((i) => i.aisle == a.id)) ...[
+            SectionTitle(a.name),
+            ChoiceChips(
+              options: {
+                for (final i in items.where((i) => i.aisle == a.id)) i.id: i.name
+              },
+              selected: f,
+              onTap: (k) {
+                f.contains(k) ? f.remove(k) : f.add(k);
+                widget.onChanged();
+              },
+            ),
+          ],
+      ],
     );
   }
 }

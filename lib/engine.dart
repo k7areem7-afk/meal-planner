@@ -75,6 +75,7 @@ Map<String, double> aggregate(
     Catalog c, List<PlannedMeal> meals, Map<String, List<String>> usedBy) {
   final amounts = <String, double>{};
   for (final m in meals) {
+    if (m.leftover) continue; // already cooked yesterday
     final r = c.recipeById[m.recipeId];
     if (r == null) continue;
     final f = m.servings / r.servings;
@@ -113,6 +114,72 @@ double shoppingTotal(Catalog c, Pricing pr, List<PlannedMeal> meals,
   return t;
 }
 
+// ------------------------------------------------------------- leftovers
+
+/// The leftover meal that eats from [m]'s pot the next day.
+PlannedMeal? partnerOf(List<PlannedMeal> plan, PlannedMeal m) {
+  if (m.leftover) return null;
+  for (final x in plan) {
+    if (x.leftover &&
+        x.day == m.day + 1 &&
+        x.slot == m.slot &&
+        x.recipeId == m.recipeId) {
+      return x;
+    }
+  }
+  return null;
+}
+
+/// The cooked meal a leftover comes from.
+PlannedMeal? originalOf(List<PlannedMeal> plan, PlannedMeal m) {
+  if (!m.leftover) return null;
+  for (final x in plan) {
+    if (!x.leftover &&
+        x.day == m.day - 1 &&
+        x.slot == m.slot &&
+        x.recipeId == m.recipeId) {
+      return x;
+    }
+  }
+  return null;
+}
+
+/// Replace a meal's recipe and keep leftover links consistent.
+void applyReplace(
+    List<PlannedMeal> plan, PlannedMeal m, String recipeId, Catalog c) {
+  if (m.leftover) {
+    final o = originalOf(plan, m);
+    if (o != null) o.servings = max(1, o.servings - m.servings);
+    m.leftover = false;
+    m.recipeId = recipeId;
+    return;
+  }
+  final partner = partnerOf(plan, m);
+  if (partner != null) {
+    final r = c.recipeById[recipeId];
+    if (r != null && r.keeps) {
+      partner.recipeId = recipeId;
+    } else {
+      // The new dish should not sit in the fridge: tomorrow is cooked fresh.
+      partner.leftover = false;
+      m.servings = max(1, m.servings - partner.servings);
+    }
+  }
+  m.recipeId = recipeId;
+}
+
+/// Remove a meal and keep leftover links consistent.
+void applyRemove(List<PlannedMeal> plan, PlannedMeal m) {
+  if (m.leftover) {
+    final o = originalOf(plan, m);
+    if (o != null) o.servings = max(1, o.servings - m.servings);
+  } else {
+    final partner = partnerOf(plan, m);
+    if (partner != null) partner.leftover = false;
+  }
+  plan.remove(m);
+}
+
 // ------------------------------------------------------------- planner
 
 class PlanResult {
@@ -123,17 +190,25 @@ class PlanResult {
   PlanResult(this.meals, this.total, this.fits, this.emptySlots);
 }
 
+class Alternative {
+  final Recipe recipe;
+  final double total; // weekly shopping total if chosen
+  final bool inPlan; // already cooked on another (non-adjacent) day
+  Alternative(this.recipe, this.total, this.inPlan);
+}
+
 class Planner {
   final Catalog c;
   final Prefs p;
   final Pricing pr;
-  final Set<String> have;
   final Random rng;
 
-  Planner(this.c, this.p, this.pr, {this.have = const {}, Random? rng})
-      : rng = rng ?? Random();
+  Planner(this.c, this.p, this.pr, {Random? rng}) : rng = rng ?? Random();
+
+  Set<String> get have => p.fridge;
 
   static const _weight = {'b': 0.55, 'l': 1.35, 'd': 1.0};
+  static const maxLeftoverPairs = 3;
 
   double _target(String slot) {
     final slots = <String>[for (final s in slotOrder) if (p.meals.contains(s)) s];
@@ -146,49 +221,101 @@ class Planner {
   List<Recipe> candidates(String slot) =>
       c.recipes.where((r) => recipeAllowed(r, p, slot: slot)).toList();
 
-  double _score(Recipe r, String slot, int day, List<PlannedMeal> plan) {
+  /// 0: not in the week yet. 1: elsewhere in the week. 2: yesterday, today
+  /// or tomorrow (never allowed unless nothing else fits).
+  int conflict(List<PlannedMeal> plan, String id, int day,
+      [List<PlannedMeal> except = const []]) {
+    var level = 0;
+    for (final m in plan) {
+      if (m.recipeId != id || except.any((e) => identical(e, m))) continue;
+      if ((m.day - day).abs() <= 1) return 2;
+      level = 1;
+    }
+    return level;
+  }
+
+  int fridgeHits(Recipe r) => r.lines
+      .where((l) =>
+          have.contains(l.ingId) && !c.ingredients[l.ingId]!.pantry)
+      .length;
+
+  double _score(Recipe r, String slot) {
     final cost = pr.costPerServing(r);
     final target = _target(slot);
     var s = 0.0;
-    // Cheaper than the slot's share is good; much more expensive is bad.
-    s -= max(0, cost - target) * 3;
-    s -= (cost - target).abs() * 0.4;
+    s -= max(0, cost - target) * 2;
+    s -= (cost - target).abs() * 0.3;
     if (p.styles.isNotEmpty && r.styles.any(p.styles.contains)) s += 4;
-    final uses = plan.where((m) => m.recipeId == r.id).length;
-    s -= uses * 6;
-    if (plan.any((m) => m.recipeId == r.id && (m.day - day).abs() <= 1)) {
-      s -= 8;
-    }
+    s += min(3, fridgeHits(r)) * 2.5; // use what is already in the fridge
     if (r.minutes <= 30) s += 0.5;
-    return s + rng.nextDouble() * 3;
+    return s + rng.nextDouble() * 4;
   }
 
-  PlannedMeal _pick(String slot, int day, List<PlannedMeal> plan) {
-    final cands = candidates(slot);
-    if (cands.isEmpty) {
-      return PlannedMeal(day: day, slot: slot, recipeId: '', servings: p.people);
+  Recipe? _choose(String slot, int day, List<PlannedMeal> plan,
+      {bool needKeeps = false}) {
+    var cands = candidates(slot);
+    if (needKeeps) cands = cands.where((r) => r.keeps).toList();
+    for (final level in [0, 1, 2]) {
+      final pool = cands
+          .where((r) =>
+              conflict(plan, r.id, day) <= level &&
+              (!needKeeps || conflict(plan, r.id, day + 1) <= level))
+          .toList();
+      if (level == 2 && needKeeps) return null;
+      if (pool.isEmpty) continue;
+      final scores = {for (final r in pool) r.id: _score(r, slot)};
+      pool.sort((a, b) => scores[b.id]!.compareTo(scores[a.id]!));
+      final top = pool.take(min(4, pool.length)).toList();
+      return top[rng.nextInt(top.length)];
     }
-    final scores = {for (final r in cands) r.id: _score(r, slot, day, plan)};
-    cands.sort((a, b) => scores[b.id]!.compareTo(scores[a.id]!));
-    final top = cands.take(min(4, cands.length)).toList();
-    final r = top[rng.nextInt(top.length)];
-    return PlannedMeal(day: day, slot: slot, recipeId: r.id, servings: p.people);
+    return null;
   }
+
+  bool _occupied(List<PlannedMeal> plan, int day, String slot) =>
+      plan.any((m) => m.day == day && m.slot == slot);
 
   /// Builds a week. Locked meals in [keep] are preserved.
   PlanResult generate({List<PlannedMeal> keep = const []}) {
     final plan = <PlannedMeal>[for (final m in keep) if (m.locked) m.copy()];
+    // A locked leftover without its locked pot becomes a normal meal.
+    for (final m in plan.where((m) => m.leftover).toList()) {
+      if (originalOf(plan, m) == null) m.leftover = false;
+    }
+    final empty = <String>[];
+    var pairs = 0;
     for (var day = 0; day < 7; day++) {
       for (final slot in slotOrder) {
-        if (!p.meals.contains(slot)) continue;
-        if (plan.any((m) => m.day == day && m.slot == slot)) continue;
-        plan.add(_pick(slot, day, plan));
+        if (!p.meals.contains(slot) || _occupied(plan, day, slot)) continue;
+        final tryPair = p.leftovers &&
+            slot != 'b' &&
+            pairs < maxLeftoverPairs &&
+            day < 6 &&
+            !_occupied(plan, day + 1, slot) &&
+            rng.nextDouble() < 0.45;
+        if (tryPair) {
+          final r = _choose(slot, day, plan, needKeeps: true);
+          if (r != null) {
+            plan.add(PlannedMeal(
+                day: day, slot: slot, recipeId: r.id, servings: p.people * 2));
+            plan.add(PlannedMeal(
+                day: day + 1,
+                slot: slot,
+                recipeId: r.id,
+                servings: p.people,
+                leftover: true));
+            pairs++;
+            continue;
+          }
+        }
+        final r = _choose(slot, day, plan);
+        if (r == null) {
+          empty.add('$day-$slot');
+        } else {
+          plan.add(PlannedMeal(
+              day: day, slot: slot, recipeId: r.id, servings: p.people));
+        }
       }
     }
-    final empty = <String>[
-      for (final m in plan) if (m.recipeId.isEmpty) '${m.day}-${m.slot}'
-    ];
-    plan.removeWhere((m) => m.recipeId.isEmpty);
     _fitBudget(plan);
     plan.sort((a, b) => a.day != b.day
         ? a.day.compareTo(b.day)
@@ -200,29 +327,31 @@ class Planner {
   void _fitBudget(List<PlannedMeal> plan) {
     var total = shoppingTotal(c, pr, plan, have: have);
     var guard = 0;
-    final tried = <String>{};
-    while (total > p.budget && guard < 80) {
+    final tried = <PlannedMeal>{};
+    while (total > p.budget && guard < 120) {
       guard++;
-      // Most expensive unlocked meal we have not tried to replace yet.
       final open = plan
-          .where((m) => !m.locked && !tried.contains('${m.day}-${m.slot}'))
+          .where((m) => !m.locked && !m.leftover && !tried.contains(m))
           .toList();
       if (open.isEmpty) break;
-      open.sort((a, b) => pr
-          .costPerServing(c.recipeById[b.recipeId]!)
-          .compareTo(pr.costPerServing(c.recipeById[a.recipeId]!)));
+      double mealCost(PlannedMeal m) =>
+          pr.costPerServing(c.recipeById[m.recipeId]!) * m.servings;
+      open.sort((a, b) => mealCost(b).compareTo(mealCost(a)));
       final m = open.first;
-      tried.add('${m.day}-${m.slot}');
+      tried.add(m);
+      final partner = partnerOf(plan, m);
+      final except = [m, if (partner != null) partner];
       final current = m.recipeId;
-      final options = candidates(m.slot)
-          .where((r) =>
-              r.id != current &&
-              plan.where((x) => x.recipeId == r.id).length < 2)
-          .toList();
+      final options = candidates(m.slot).where((r) =>
+          r.id != current &&
+          (partner == null || r.keeps) &&
+          conflict(plan, r.id, m.day, except) == 0 &&
+          (partner == null || conflict(plan, r.id, m.day + 1, except) == 0));
       String? best;
       var bestTotal = total;
       for (final r in options) {
         m.recipeId = r.id;
+        partner?.recipeId = r.id;
         final t = shoppingTotal(c, pr, plan, have: have);
         if (t < bestTotal - 0.5) {
           bestTotal = t;
@@ -230,34 +359,47 @@ class Planner {
         }
       }
       m.recipeId = best ?? current;
+      partner?.recipeId = best ?? current;
       if (best != null) {
         total = bestTotal;
-        tried.clear();
-        tried.add('${m.day}-${m.slot}');
+        tried
+          ..clear()
+          ..add(m);
       }
     }
   }
 
-  /// Alternatives for one slot, best first, with the weekly total each gives.
-  List<(Recipe, double)> alternatives(
-      List<PlannedMeal> plan, PlannedMeal target) {
-    final out = <(Recipe, double)>[];
-    final copy = [for (final m in plan) m.copy()];
+  /// Alternatives for one slot (never yesterday's or tomorrow's dish).
+  List<Alternative> alternatives(List<PlannedMeal> plan, PlannedMeal target) {
+    final out = <Alternative>[];
     final idx = plan.indexOf(target);
+    final partner = idx >= 0 ? partnerOf(plan, target) : null;
+    final original = idx >= 0 ? originalOf(plan, target) : null;
+    final except = [
+      target,
+      if (partner != null) partner,
+      if (original != null) original,
+    ];
     for (final r in candidates(target.slot)) {
       if (r.id == target.recipeId) continue;
+      final level = conflict(plan, r.id, target.day, except);
+      if (level == 2) continue;
+      var total = 0.0;
       if (idx >= 0) {
-        copy[idx].recipeId = r.id;
-        out.add((r, shoppingTotal(c, pr, copy, have: have)));
-      } else {
-        out.add((r, 0));
+        final copy = [for (final m in plan) m.copy()];
+        applyReplace(copy, copy[idx], r.id, c);
+        total = shoppingTotal(c, pr, copy, have: have);
       }
+      out.add(Alternative(r, total, level == 1));
     }
     out.sort((a, b) {
-      final sa = p.styles.isNotEmpty && a.$1.styles.any(p.styles.contains);
-      final sb = p.styles.isNotEmpty && b.$1.styles.any(p.styles.contains);
+      if (a.inPlan != b.inPlan) return a.inPlan ? 1 : -1;
+      final fa = fridgeHits(a.recipe), fb = fridgeHits(b.recipe);
+      if (fa != fb) return fb.compareTo(fa);
+      final sa = p.styles.isNotEmpty && a.recipe.styles.any(p.styles.contains);
+      final sb = p.styles.isNotEmpty && b.recipe.styles.any(p.styles.contains);
       if (sa != sb) return sa ? -1 : 1;
-      return a.$2.compareTo(b.$2);
+      return a.total.compareTo(b.total);
     });
     return out;
   }
