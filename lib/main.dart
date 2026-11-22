@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'state.dart';
 import 'ui/onboarding.dart';
 import 'ui/shell.dart';
+import 'ui/theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,6 @@ class SufraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    const seed = Color(0xFF2E7D32);
     return MaterialApp(
       title: 'سفرة',
       debugShowCheckedModeBanner: false,
@@ -29,17 +29,8 @@ class SufraApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: seed),
-        cardTheme: const CardThemeData(margin: EdgeInsets.zero),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme:
-            ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.dark),
-        cardTheme: const CardThemeData(margin: EdgeInsets.zero),
-      ),
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
       home: !app.loaded
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : (app.onboarded ? const Shell() : const OnboardingScreen()),

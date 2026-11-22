@@ -35,6 +35,8 @@ class Ingredient {
   final List<String> allergens;
   final List<String> tags;
   final bool pantry;
+  final String emoji;
+  final List<double> nutr; // kcal, protein, carbs, fat per 100 g/ml
 
   const Ingredient({
     required this.id,
@@ -49,7 +51,11 @@ class Ingredient {
     required this.allergens,
     required this.tags,
     required this.pantry,
+    required this.emoji,
+    required this.nutr,
   });
+
+  bool get isSpice => aisle == 'spices' || id == 'salt';
 
   factory Ingredient.fromJson(Map<String, dynamic> j) => Ingredient(
         id: j['id'] as String,
@@ -64,6 +70,10 @@ class Ingredient {
         allergens: _strList(j['allergens']),
         tags: _strList(j['tags']),
         pantry: j['pantry'] == true,
+        emoji: (j['emoji'] as String?) ?? '🥫',
+        nutr: ((j['nutr'] as List?) ?? const [0, 0, 0, 0])
+            .map((e) => (e as num).toDouble())
+            .toList(),
       );
 }
 
@@ -75,6 +85,7 @@ class RecipeLine {
   const RecipeLine(this.ingId, this.q, this.u, this.b);
   factory RecipeLine.fromJson(Map<String, dynamic> j) =>
       RecipeLine(j['i'] as String, _d(j['q']), j['u'] as String, _d(j['b']));
+  Map<String, dynamic> toJson() => {'i': ingId, 'q': q, 'u': u, 'b': b};
 }
 
 class Recipe {
@@ -95,6 +106,10 @@ class Recipe {
   final List<String> allergens;
   final List<String> tags;
   final bool keeps; // fine to eat on the second day
+  final bool fried;
+  final List<String> diets;
+  final List<String> vibes;
+  final bool user; // made by the user or by AI
 
   const Recipe({
     required this.id,
@@ -114,10 +129,14 @@ class Recipe {
     required this.allergens,
     required this.tags,
     required this.keeps,
+    this.fried = false,
+    this.diets = const [],
+    this.vibes = const [],
+    this.user = false,
   });
 
   factory Recipe.fromJson(Map<String, dynamic> j) {
-    final n = j['nutrition'] as Map<String, dynamic>;
+    final n = (j['nutrition'] as Map).cast<String, dynamic>();
     return Recipe(
       id: j['id'] as String,
       title: j['title'] as String,
@@ -128,7 +147,7 @@ class Recipe {
       appliances: _strList(j['appliances']),
       servings: (j['servings'] as num).toInt(),
       lines: (j['ingredients'] as List)
-          .map((e) => RecipeLine.fromJson(e as Map<String, dynamic>))
+          .map((e) => RecipeLine.fromJson((e as Map).cast<String, dynamic>()))
           .toList(),
       steps: _strList(j['steps']),
       kcal: (n['kcal'] as num).toInt(),
@@ -138,8 +157,38 @@ class Recipe {
       allergens: _strList(j['allergens']),
       tags: _strList(j['tags']),
       keeps: j['keeps'] == true,
+      fried: j['fried'] == true,
+      diets: _strList(j['diets']),
+      vibes: _strList(j['vibes']),
+      user: j['user'] == true,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'emoji': emoji,
+        'meals': meals,
+        'styles': styles,
+        'minutes': minutes,
+        'appliances': appliances,
+        'servings': servings,
+        'ingredients': lines.map((l) => l.toJson()).toList(),
+        'steps': steps,
+        'nutrition': {
+          'kcal': kcal,
+          'protein': protein,
+          'carbs': carbs,
+          'fat': fat
+        },
+        'allergens': allergens,
+        'tags': tags,
+        'keeps': keeps,
+        'fried': fried,
+        'diets': diets,
+        'vibes': vibes,
+        'user': user,
+      };
 }
 
 class Catalog {
@@ -155,8 +204,9 @@ class Catalog {
     required this.stores,
     required this.styles,
     required this.ingredients,
-    required this.recipes,
-  }) : recipeById = {for (final r in recipes) r.id: r};
+    required List<Recipe> recipes,
+  })  : recipes = [...recipes],
+        recipeById = {for (final r in recipes) r.id: r};
 
   factory Catalog.fromJson(Map<String, dynamic> cat, List<dynamic> rec) {
     final ings = (cat['ingredients'] as List)
@@ -179,6 +229,17 @@ class Catalog {
     );
   }
 
+  void register(Recipe r) {
+    recipes.removeWhere((x) => x.id == r.id);
+    recipes.add(r);
+    recipeById[r.id] = r;
+  }
+
+  void unregister(String id) {
+    recipes.removeWhere((x) => x.id == id);
+    recipeById.remove(id);
+  }
+
   Store store(String id) =>
       stores.firstWhere((s) => s.id == id, orElse: () => stores.first);
 
@@ -196,28 +257,42 @@ class Prefs {
   double budget; // SAR per week
   int people;
   Set<String> meals; // b l d
-  String diet; // none vegetarian low_carb high_protein
+  Set<String> diets; // see dietOptions
   Set<String> styles;
+  Set<String> vibes;
   Set<String> allergies;
   Set<String> dislikes;
   Set<String> appliances;
   Set<String> fridge; // ingredients already at home
   bool leftovers; // cook once, eat two days
+  bool kcalTarget;
+  int kcal; // per person per day
+  int protein;
+  int carbs;
+  int fat;
 
   Prefs({
     this.storeId = 'panda',
     this.budget = 600,
     this.people = 4,
     Set<String>? meals,
-    this.diet = 'none',
+    Set<String>? diets,
     Set<String>? styles,
+    Set<String>? vibes,
     Set<String>? allergies,
     Set<String>? dislikes,
     Set<String>? appliances,
     Set<String>? fridge,
     this.leftovers = true,
+    this.kcalTarget = false,
+    this.kcal = 2000,
+    this.protein = 120,
+    this.carbs = 200,
+    this.fat = 70,
   })  : meals = meals ?? {'b', 'l', 'd'},
+        diets = diets ?? <String>{},
         styles = styles ?? <String>{},
+        vibes = vibes ?? <String>{},
         allergies = allergies ?? <String>{},
         dislikes = dislikes ?? <String>{},
         appliances = appliances ?? {'oven'},
@@ -230,28 +305,48 @@ class Prefs {
         'budget': budget,
         'people': people,
         'meals': meals.toList(),
-        'diet': diet,
+        'diets': diets.toList(),
         'styles': styles.toList(),
+        'vibes': vibes.toList(),
         'allergies': allergies.toList(),
         'dislikes': dislikes.toList(),
         'appliances': appliances.toList(),
         'fridge': fridge.toList(),
         'leftovers': leftovers,
+        'kcalTarget': kcalTarget,
+        'kcal': kcal,
+        'protein': protein,
+        'carbs': carbs,
+        'fat': fat,
       };
 
-  factory Prefs.fromJson(Map<String, dynamic> j) => Prefs(
-        storeId: (j['storeId'] as String?) ?? 'panda',
-        budget: j['budget'] == null ? 600 : _d(j['budget']),
-        people: (j['people'] as num?)?.toInt() ?? 4,
-        meals: _strList(j['meals']).toSet(),
-        diet: (j['diet'] as String?) ?? 'none',
-        styles: _strList(j['styles']).toSet(),
-        allergies: _strList(j['allergies']).toSet(),
-        dislikes: _strList(j['dislikes']).toSet(),
-        appliances: _strList(j['appliances']).toSet(),
-        fridge: _strList(j['fridge']).toSet(),
-        leftovers: j['leftovers'] != false,
-      );
+  factory Prefs.fromJson(Map<String, dynamic> j) {
+    final diets = _strList(j['diets']).toSet();
+    final old = j['diet'] as String?; // v1/v2 single diet
+    if (old != null && old != 'none') {
+      diets.add(old == 'low_carb' ? 'keto' : old);
+    }
+    int i(String k, int d) => (j[k] as num?)?.toInt() ?? d;
+    return Prefs(
+      storeId: (j['storeId'] as String?) ?? 'panda',
+      budget: j['budget'] == null ? 600 : _d(j['budget']),
+      people: i('people', 4),
+      meals: _strList(j['meals']).toSet(),
+      diets: diets,
+      styles: _strList(j['styles']).toSet(),
+      vibes: _strList(j['vibes']).toSet(),
+      allergies: _strList(j['allergies']).toSet(),
+      dislikes: _strList(j['dislikes']).toSet(),
+      appliances: _strList(j['appliances']).toSet(),
+      fridge: _strList(j['fridge']).toSet(),
+      leftovers: j['leftovers'] != false,
+      kcalTarget: j['kcalTarget'] == true,
+      kcal: i('kcal', 2000),
+      protein: i('protein', 120),
+      carbs: i('carbs', 200),
+      fat: i('fat', 70),
+    );
+  }
 }
 
 class PlannedMeal {
@@ -326,46 +421,96 @@ class CustomItem {
 
 // ------------------------------------------------------------- labels
 
+class Option {
+  final String id;
+  final String emoji;
+  final String title;
+  final String sub;
+  const Option(this.id, this.emoji, this.title, [this.sub = '']);
+}
+
 const slotNames = {'b': 'الفطور', 'l': 'الغداء', 'd': 'العشاء'};
 const slotOrder = ['b', 'l', 'd'];
 
-const dietNames = {
-  'none': 'آكل كل شيء',
-  'vegetarian': 'نباتي (بدون لحوم وأسماك)',
-  'low_carb': 'قليل الكربوهيدرات',
-  'high_protein': 'بروتين عالي',
+const dietOptions = [
+  Option('vegetarian', '🥦', 'نباتي', 'بدون لحوم ولا سمك'),
+  Option('vegan', '🌱', 'نباتي صرف', 'بدون أي منتج حيواني'),
+  Option('pescatarian', '🐟', 'سمك بدون لحوم', 'سمك وبحريات، بدون لحوم'),
+  Option('keto', '🔥', 'كيتو', 'كارب قليل جداً'),
+  Option('high_protein', '💪', 'بروتين عالي', 'وجبات غنية بالبروتين'),
+  Option('glp1', '🎯', 'حصص خفيفة', 'سعرات أقل وبروتين كويس'),
+  Option('anti_inflammatory', '💧', 'مضاد للالتهاب', 'أكل طبيعي بدون مقلي ولا مصنّع'),
+  Option('mediterranean', '🫒', 'متوسطي', 'خضار وسمك وزيت زيتون'),
+];
+const hardDiets = {'vegetarian', 'vegan', 'pescatarian'};
+
+const styleEmoji = {
+  'saudi': '🇸🇦',
+  'egyptian': '🇪🇬',
+  'levant': '🇱🇧',
+  'italian': '🇮🇹',
+  'asian': '🇹🇭',
+  'indian': '🇮🇳',
+  'mexican': '🇲🇽',
+  'healthy': '🥗',
+  'western': '🍔',
+};
+const styleSub = {
+  'saudi': 'كبسة، مندي، جريش',
+  'egyptian': 'محاشي، كشري، مكرونات',
+  'levant': 'مقلوبة، فتة، شاورما',
+  'italian': 'باستا، طماطم، أعشاب',
+  'asian': 'كاري، نودلز، صويا',
+  'indian': 'برياني، كاري، عدس',
+  'mexican': 'تاكو، فاهيتا، فاصوليا',
+  'healthy': 'خفيف ومتوازن',
+  'western': 'برجر، مشويات، شوربات',
 };
 
-const allergyNames = {
-  'gluten': 'القمح والجلوتين',
-  'dairy': 'الحليب ومشتقاته',
-  'eggs': 'البيض',
-  'nuts': 'المكسرات',
-  'fish': 'السمك',
-  'shellfish': 'الروبيان والقشريات',
-  'sesame': 'السمسم',
-  'soy': 'الصويا',
-};
+const vibeOptions = [
+  Option('quick', '⚡', 'سريع وسهل', 'جاهز في حوالي 20 دقيقة'),
+  Option('one_pan', '🍳', 'طاسة واحدة', 'مواعين أقل'),
+  Option('batch', '🍲', 'اطبخ مرة وكُل مرتين', 'طبخة تكفي يومين'),
+  Option('family', '👨‍👩‍👧', 'مفضلة العيلة', 'أكلات يحبها الكل'),
+  Option('comfort', '🥘', 'أكل البيت', 'الأكلات الدسمة المعروفة'),
+  Option('fresh', '🥬', 'طازج وخفيف', 'خضار أكثر وأخف'),
+  Option('fiber', '🌾', 'ألياف عالية', 'بقوليات وحبوب وخضار'),
+  Option('takeout', '🍔', 'أكل مطاعم بالبيت', 'زي المطاعم بأقل تكلفة'),
+];
 
-const dislikeNames = {
-  'fish': 'السمك',
-  'seafood': 'المأكولات البحرية',
-  'lamb': 'لحم الغنم',
-  'beef': 'اللحم البقري',
-  'liver': 'الكبدة',
-  'mushroom': 'الفطر',
-  'eggplant': 'الباذنجان',
-  'okra': 'البامية',
-  'coriander': 'الكزبرة',
-  'spicy': 'الأكل الحار',
-};
+const allergyOptions = [
+  Option('gluten', '🌾', 'القمح والجلوتين'),
+  Option('dairy', '🥛', 'الحليب ومشتقاته'),
+  Option('eggs', '🥚', 'البيض'),
+  Option('nuts', '🥜', 'المكسرات'),
+  Option('fish', '🐟', 'السمك'),
+  Option('shellfish', '🦐', 'الجمبري والقشريات'),
+  Option('sesame', '⚪', 'السمسم'),
+  Option('soy', '🫘', 'الصويا'),
+];
 
-const applianceNames = {
-  'oven': ('الفرن', '🔥'),
-  'air_fryer': ('القلاية الهوائية', '🍟'),
-  'microwave': ('المايكرويف', '📡'),
-  'blender': ('الخلاط', '🌀'),
-  'pressure_cooker': ('قدر الضغط', '♨️'),
-};
+const dislikeOptions = [
+  Option('fish', '🐟', 'السمك'),
+  Option('seafood', '🦐', 'المأكولات البحرية'),
+  Option('lamb', '🐑', 'لحم الغنم'),
+  Option('beef', '🐄', 'اللحم البقري'),
+  Option('liver', '🫀', 'الكبدة'),
+  Option('mushroom', '🍄', 'المشروم'),
+  Option('eggplant', '🍆', 'الباذنجان'),
+  Option('okra', '🌱', 'البامية'),
+  Option('coriander', '🌿', 'الكزبرة'),
+  Option('spicy', '🌶️', 'الأكل الحار'),
+];
+
+const applianceOptions = [
+  Option('oven', '🔥', 'الفرن'),
+  Option('air_fryer', '🍟', 'القلاية الهوائية'),
+  Option('microwave', '📡', 'المايكرويف'),
+  Option('blender', '🌀', 'الخلاط'),
+  Option('pressure_cooker', '♨️', 'حلة الضغط'),
+];
+
+String optionTitle(List<Option> list, String id) =>
+    list.firstWhere((o) => o.id == id, orElse: () => Option(id, '', id)).title;
 
 const meatTags = {'chicken', 'beef', 'lamb', 'fish', 'seafood', 'liver'};

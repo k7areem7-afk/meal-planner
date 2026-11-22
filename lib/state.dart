@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'ai.dart';
 import 'engine.dart';
 import 'models.dart';
 
@@ -22,6 +23,22 @@ class AppState extends ChangeNotifier {
   Set<String> checked = {};
   List<CustomItem> custom = [];
   bool showPantry = false;
+  String geminiKey = '';
+  String geminiModel = Gemini.defaultModel;
+  List<Recipe> userRecipes = [];
+
+  static const dataVersion = 3;
+
+  Gemini? get gemini => geminiKey.trim().isEmpty
+      ? null
+      : Gemini(geminiKey.trim(),
+          geminiModel.trim().isEmpty ? Gemini.defaultModel : geminiModel.trim());
+
+  /// Spices, salt and oil most homes already have.
+  Set<String> get basicIds => {
+        for (final i in c.ingredients.values)
+          if (i.pantry) i.id
+      };
 
   static DateTime _today() {
     final n = DateTime.now();
@@ -49,6 +66,14 @@ class AppState extends ChangeNotifier {
   }
 
   void _fromJson(Map<String, dynamic> j) {
+    userRecipes = ((j['userRecipes'] as List?) ?? [])
+        .map((e) => Recipe.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+    for (final r in userRecipes) {
+      c.register(r);
+    }
+    geminiKey = (j['geminiKey'] as String?) ?? '';
+    geminiModel = (j['geminiModel'] as String?) ?? Gemini.defaultModel;
     onboarded = j['onboarded'] == true;
     prefs = Prefs.fromJson((j['prefs'] as Map).cast<String, dynamic>());
     planStart = DateTime.tryParse(j['planStart'] as String? ?? '') ?? _today();
@@ -65,6 +90,10 @@ class AppState extends ChangeNotifier {
         .map((e) => CustomItem.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
     showPantry = j['showPantry'] == true;
+    // Before v3 spices were assumed to be at home; keep it that way.
+    if (((j['v'] as num?)?.toInt() ?? 1) < 3 && onboarded) {
+      prefs.fridge.addAll(basicIds);
+    }
   }
 
   Map<String, dynamic> _toJson() => {
@@ -76,6 +105,10 @@ class AppState extends ChangeNotifier {
         'checked': checked.toList(),
         'custom': custom.map((e) => e.toJson()).toList(),
         'showPantry': showPantry,
+        'v': dataVersion,
+        'geminiKey': geminiKey,
+        'geminiModel': geminiModel,
+        'userRecipes': userRecipes.map((r) => r.toJson()).toList(),
       };
 
   Future<void> _save() async {
@@ -218,6 +251,30 @@ class AppState extends ChangeNotifier {
 
   void resetPrice(String ingId) {
     overrides.remove(Pricing.key(prefs.storeId, ingId));
+    _changed();
+  }
+
+  // ------------------------------------------------------------ my recipes
+
+  void saveRecipe(Recipe r) {
+    userRecipes.removeWhere((x) => x.id == r.id);
+    userRecipes.add(r);
+    c.register(r);
+    _changed();
+  }
+
+  void deleteRecipe(String id) {
+    userRecipes.removeWhere((x) => x.id == id);
+    plan.removeWhere((m) => m.recipeId == id);
+    c.unregister(id);
+    _changed();
+  }
+
+  bool isSaved(String id) => userRecipes.any((r) => r.id == id);
+
+  void setAi(String key, String model) {
+    geminiKey = key.trim();
+    geminiModel = model.trim().isEmpty ? Gemini.defaultModel : model.trim();
     _changed();
   }
 

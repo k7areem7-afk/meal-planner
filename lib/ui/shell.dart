@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'ai_screen.dart';
 import 'grocery_screen.dart';
 import 'plan_screen.dart';
 import 'recipes_screen.dart';
@@ -19,6 +20,7 @@ class _ShellState extends State<Shell> {
     const pages = [
       PlanScreen(),
       GroceryScreen(),
+      AiScreen(),
       RecipesScreen(),
       SettingsScreen(),
     ];
@@ -36,6 +38,10 @@ class _ShellState extends State<Shell> {
               icon: Icon(Icons.shopping_cart_outlined),
               selectedIcon: Icon(Icons.shopping_cart),
               label: 'المشتريات'),
+          NavigationDestination(
+              icon: Icon(Icons.auto_awesome_outlined),
+              selectedIcon: Icon(Icons.auto_awesome),
+              label: 'اقترح لي'),
           NavigationDestination(
               icon: Icon(Icons.menu_book_outlined),
               selectedIcon: Icon(Icons.menu_book),

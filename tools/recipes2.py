@@ -559,4 +559,16 @@ KEEP = {
     "minestrone", "butter_chicken", "chana_masala", "keema",
     "chili_con_carne", "mexican_rice", "roast_chicken",
     "coconut_lentil_curry", "chicken_vermicelli_soup",
+    # v3 Egyptian & healthy
+    "mahshi_mix", "warak_enab", "cabbage_mahshi_eg", "stuffed_peppers_meat",
+    "bamia_chicken", "peas_chicken", "chicken_potato_tray", "zucchini_sauce",
+    "qolqas", "lobia", "adas_abu_gebba", "roz_khalta", "kofta_tray_eg",
+    "kofta_rice", "kebab_halla", "koshari_alex", "lesan_asfour_soup",
+    "lentil_vermicelli_soup", "besara", "pasta_oven_veg",
+    "macarona_bechamel_chicken", "lasagna_eg_veg", "potato_tagine_veg",
+    "okra_veg", "green_beans_veg", "rice_veg_chicken_one_pot",
+    "bamia_oven_meat", "moussaka_bechamel_eg", "fasolia_beef_eg",
+    "molokhia_beef", "stuffed_eggplant_white", "chicken_meatballs_oven",
+    "veg_coconut_curry", "tomato_lentil_soup", "broccoli_soup",
+    "quinoa_stuffed_peppers", "lentil_salad", "roz_moammar",
 }

@@ -10,9 +10,29 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from ingredients import AISLES, ING, STORES  # noqa: E402
+from ingredients import AISLES, EMOJI, ING, STORES  # noqa: E402
 from recipes import REC, STYLES  # noqa: E402
 from recipes2 import KEEP  # noqa: E402
+from recipes_eg import VIBES  # noqa: E402
+import recipes_health  # noqa: E402,F401
+
+FIBER = {"red_lentils", "brown_lentils", "chickpeas_can", "chickpeas_dry",
+         "kidney_beans", "white_beans", "black_eyed_peas", "fava_can",
+         "broad_beans_dry", "bulgur", "freekeh", "oats", "quinoa", "jareesh",
+         "wheat", "spinach", "broccoli", "molokhia", "okra", "green_beans",
+         "peas_carrots", "cabbage", "cauliflower"}
+PROCESSED = {"mayo", "ketchup", "pastrami", "cream", "cheese_triangles",
+             "cream_cheese", "halawa", "sambosa_sheets", "breadcrumbs",
+             "burger_buns", "noodles"}
+OLD_VIBES = {
+    "takeout": "shawarma beef_burger crispy_chicken_burger honey_wings tortilla_pizza beef_tacos chicken_burrito quesadilla koshari hawawshi falafel chicken_fajita sweet_sour_chicken egg_fried_rice chicken_noodles meat_sambosa cheese_sambosa butter_chicken shrimp_fried_rice chicken_pane",
+    "family": "kabsa_chicken mandi_chicken maqluba saudi_macaroni bechamel_pasta bolognese lasagna_beef chicken_pane kofta_tahini shawarma beef_burger chicken_burrito bukhari_chicken roast_chicken molokhia_chicken peas_stew kousa_mahshi chicken_veg_rice pancakes french_toast",
+    "comfort": "jareesh saleeg harees lentil_soup oat_soup marqa_meat marqooq bamia_meat peas_stew green_beans_meat potato_tagine molokhia_chicken bechamel_pasta saloona_chicken mujaddara koshari shakriyeh tomato_soup mushroom_soup kabsa_lamb chicken_vermicelli_soup",
+    "one_pan": "shakshuka eggs_tomato eggs_potato soy_chicken egg_fried_rice chicken_liver madhghout red_rice_chicken shrimp_rice coconut_curry keema chili_con_carne mexican_rice chicken_rice_bowl beef_broccoli almond_chicken frittata saudi_macaroni",
+}
+for _v, _ids in OLD_VIBES.items():
+    for _i in _ids.split():
+        VIBES.setdefault(_i, set()).add(_v)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "assets", "data")
@@ -125,6 +145,38 @@ for r in REC:
         if iid not in used:
             errors.append(f"{rid}: ingredient {iid} never used in steps")
     s = r["servings"]
+    oil = sum(ln["b"] for ln in lines if ln["i"] == "veg_oil")
+    fried = oil >= 70 or any(w in text for w in ("اقلِ", "اقلها", "اقليه", "اقليها", "اقلي "))
+    kc, pr_, cb = kcal / s, p / s, c / s
+    meat = tags & {"chicken", "beef", "lamb", "liver"}
+    fishy = tags & {"fish", "seafood"}
+    diets = []
+    if not meat:
+        diets.append("pescatarian")
+        if not fishy:
+            diets.append("vegetarian")
+            if not (allergens & {"dairy", "eggs"}) and "honey" not in ids:
+                diets.append("vegan")
+    if cb <= 15:
+        diets.append("keto")
+    if pr_ >= (18 if "b" in r["meals"] and len(r["meals"]) == 1 else 25):
+        diets.append("high_protein")
+    processed = bool(set(ids) & PROCESSED)
+    if kc <= 550 and pr_ >= 15 and not fried:
+        diets.append("glp1")
+    if not fried and not processed and "sugar" not in ids:
+        diets.append("anti_inflammatory")
+    if "olive_oil" in ids and not fried and not processed and "lamb" not in ids:
+        diets.append("mediterranean")
+    vibes = set(VIBES.get(rid, set()))
+    if r["mins"] <= 25:
+        vibes.add("quick")
+    if rid in KEEP:
+        vibes.add("batch")
+    if kc <= 500 and not fried and not processed:
+        vibes.add("fresh")
+    if len(set(ids) & FIBER) >= 1 and (len(set(ids) & FIBER) >= 2 or any(i in FIBER for i in ids[:2])):
+        vibes.add("fiber")
     recipes_out.append({
         "id": rid, "title": r["title"], "emoji": r["emoji"],
         "meals": r["meals"], "styles": r["styles"], "minutes": r["mins"],
@@ -134,8 +186,17 @@ for r in REC:
                       "carbs": round(c / s, 1), "fat": round(f / s, 1)},
         "allergens": sorted(allergens), "tags": sorted(tags),
         "keeps": rid in KEEP,
+        "fried": fried,
+        "diets": diets,
+        "vibes": sorted(vibes),
     })
 
+for i in ING:
+    if i["id"] not in EMOJI:
+        errors.append(f"no emoji for {i['id']}")
+for k in VIBES:
+    if k not in seen:
+        errors.append(f"VIBES has unknown recipe {k}")
 for k in KEEP:
     if k not in seen:
         errors.append(f"KEEP has unknown recipe {k}")
@@ -157,6 +218,7 @@ catalog = {
         "unit": i["unit"], "pack": i["pack"], "price": i["price"],
         "pcName": i["pcn"], "pcWeight": i["pcw"], "density": i["dens"],
         "allergens": i["allergens"], "tags": i["tags"], "pantry": i["pantry"],
+        "emoji": EMOJI.get(i["id"], "🥫"), "nutr": list(i["nutr"]),
     } for i in ING],
 }
 with open(os.path.join(OUT, "catalog.json"), "w", encoding="utf-8") as fh:
@@ -184,4 +246,8 @@ veg = [x for x in recipes_out if not set(x["tags"]) & {"chicken", "beef", "lamb"
 print(f"  vegetarian: b {sum('b' in x['meals'] for x in veg)} l {sum('l' in x['meals'] for x in veg)} d {sum('d' in x['meals'] for x in veg)}")
 print("  top cost:", sorted(((round(cost(x), 1), x["id"]) for x in recipes_out))[-5:])
 print("  keeps:", sum(x["keeps"] for x in recipes_out), " l/d keepers:", sum(x["keeps"] and ("l" in x["meals"] or "d" in x["meals"]) for x in recipes_out))
+from collections import Counter
+print("  egyptian:", sum("egyptian" in x["styles"] for x in recipes_out), " healthy:", sum("healthy" in x["styles"] for x in recipes_out))
+print("  diets:", dict(Counter(d for x in recipes_out for d in x["diets"])))
+print("  vibes:", dict(Counter(v for x in recipes_out for v in x["vibes"])))
 print("  kcal range:", min(x["nutrition"]["kcal"] for x in recipes_out), max(x["nutrition"]["kcal"] for x in recipes_out))

@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import '../engine.dart';
 import '../models.dart';
 import '../state.dart';
+import 'anim.dart';
 import 'pref_editors.dart';
 import 'recipe_screen.dart';
+import 'swap_sheet.dart';
+import 'theme.dart';
+import 'week_editor.dart';
 import 'widgets.dart';
 
 class PlanScreen extends StatefulWidget {
@@ -39,7 +43,7 @@ class _PlanScreenState extends State<PlanScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(res.fits
-          ? 'خطة جديدة بتكلفة ${fmtMoney(res.total)}'
+          ? 'خطة جديدة بتكلفة ${fmtMoney(res.total)} ✨'
           : 'الخطة تتجاوز الميزانية: ${fmtMoney(res.total)}'),
     ));
   }
@@ -69,24 +73,18 @@ class _PlanScreenState extends State<PlanScreen> {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final pr = app.pricing;
-    final meals = app.plan.where((m) => m.day == day).toList()
-      ..sort((a, b) =>
-          slotOrder.indexOf(a.slot).compareTo(slotOrder.indexOf(b.slot)));
-    final dayCost = meals.fold<double>(0, (a, m) {
-      final r = app.c.recipeById[m.recipeId];
-      return r == null || m.leftover
-          ? a
-          : a + pr.costPerServing(r) * m.servings;
-    });
-    final dayKcal = meals.fold<double>(0, (a, m) {
-      final r = app.c.recipeById[m.recipeId];
-      return r == null ? a : a + r.kcal;
-    });
+    final p = app.prefs;
+    final meals = app.plan.where((m) => m.day == day).toList();
+    final macros = dayMacros(app.c, app.plan, day);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('خطة الأسبوع'),
+        flexibleSpace:
+            Container(decoration: const BoxDecoration(gradient: Brand.headerGradient)),
+        foregroundColor: Colors.white,
+        title: const Text('خطة الأسبوع',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22)),
         actions: [
           IconButton(
               tooltip: 'ثلاجتي',
@@ -102,20 +100,25 @@ class _PlanScreenState extends State<PlanScreen> {
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'reset') _reset();
+              if (v == 'week') {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const WeekEditor()));
+              }
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'week', child: Text('تعديل كل الأسبوع')),
               PopupMenuItem(value: 'reset', child: Text('إعادة ضبط الخطة')),
             ],
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          BudgetBar(total: app.total, budget: app.prefs.budget),
+          FadeSlideIn(child: BudgetBar(total: app.total, budget: p.budget)),
           const SizedBox(height: 14),
           SizedBox(
-            height: 74,
+            height: 76,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: 7,
@@ -124,14 +127,15 @@ class _PlanScreenState extends State<PlanScreen> {
                 final d = app.dayDate(i);
                 final sel = i == day;
                 final cs = Theme.of(context).colorScheme;
-                return InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                return Pressable(
                   onTap: () => setState(() => day = i),
-                  child: Container(
-                    width: 66,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: 64,
                     decoration: BoxDecoration(
-                      color: sel ? cs.primary : cs.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(16),
+                      gradient: sel ? Brand.warmGradient : null,
+                      color: sel ? null : cs.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(18),
                     ),
                     alignment: Alignment.center,
                     child: Column(
@@ -139,14 +143,14 @@ class _PlanScreenState extends State<PlanScreen> {
                       children: [
                         Text(dayName(d),
                             style: TextStyle(
-                                fontSize: 12,
-                                color: sel ? cs.onPrimary : cs.onSurface)),
+                                fontSize: 11.5,
+                                color: sel ? Colors.white : cs.onSurface)),
                         const SizedBox(height: 2),
                         Text('${d.day}',
                             style: TextStyle(
                                 fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: sel ? cs.onPrimary : cs.onSurface)),
+                                fontWeight: FontWeight.w900,
+                                color: sel ? Colors.white : cs.onSurface)),
                       ],
                     ),
                   ),
@@ -154,27 +158,34 @@ class _PlanScreenState extends State<PlanScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-            child: Row(children: [
-              Text('${dayName(app.dayDate(day))} ${app.dayDate(day).day}/${app.dayDate(day).month}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const Spacer(),
-              Text('${fmtMoney(dayCost)} · ${dayKcal.round()} سعرة/شخص',
-                  style: Theme.of(context).textTheme.bodySmall),
-            ]),
+          const SizedBox(height: 12),
+          _daySummary(context, app, macros),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Column(
+              key: ValueKey('day$day-${app.plan.length}'),
+              children: [
+                for (final slot in slotOrder)
+                  if (p.meals.contains(slot) ||
+                      meals.any((m) => m.slot == slot))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: FadeSlideIn(
+                        index: slotOrder.indexOf(slot),
+                        child: _slotCard(context, app, slot,
+                            meals.where((m) => m.slot == slot).firstOrNull),
+                      ),
+                    ),
+              ],
+            ),
           ),
-          for (final slot in slotOrder)
-            if (app.prefs.meals.contains(slot) ||
-                meals.any((m) => m.slot == slot))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _slotCard(context, app, slot,
-                    meals.where((m) => m.slot == slot).firstOrNull),
-              ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const WeekEditor())),
+            icon: const Icon(Icons.edit_calendar),
+            label: const Text('تعديل كل وجبات الأسبوع'),
+          ),
           if (app.plan.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 24),
@@ -195,6 +206,50 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
+  Widget _daySummary(BuildContext context, AppState app, Macros m) {
+    final p = app.prefs;
+    final d = app.dayDate(day);
+    Widget bar(String label, double v, int target, Color c, String unit) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$label ${v.round()}${p.kcalTarget ? '/$target' : ''}$unit',
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            AnimatedBar(
+                value: p.kcalTarget && target > 0 ? v / target : 1,
+                color: c,
+                height: 6),
+          ],
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${dayName(d)} ${d.day}/${d.month} · للشخص الواحد',
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            Row(children: [
+              bar('🔥', m.kcal, p.kcal, Brand.orange, ''),
+              const SizedBox(width: 8),
+              bar('بروتين', m.protein, p.protein, Brand.green, 'غ'),
+              const SizedBox(width: 8),
+              bar('كارب', m.carbs, p.carbs, const Color(0xFFB8860B), 'غ'),
+              const SizedBox(width: 8),
+              bar('دهون', m.fat, p.fat, const Color(0xFF8D6E63), 'غ'),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _slotCard(
       BuildContext context, AppState app, String slot, PlannedMeal? m) {
     final cs = Theme.of(context).colorScheme;
@@ -202,11 +257,11 @@ class _PlanScreenState extends State<PlanScreen> {
       return Card(
         child: ListTile(
           leading: CircleAvatar(
-              backgroundColor: cs.surfaceContainerHighest,
+              backgroundColor: Brand.yellow.withValues(alpha: 0.3),
               child: const Icon(Icons.add)),
           title: Text(slotNames[slot]!),
-          subtitle: const Text('خانة فاضية · اضغط لنقترح لك وجبة'),
-          onTap: () => _swap(context, app, null, slot),
+          subtitle: const Text('خانة فاضية · اضغط لنقترح لك أو تختار'),
+          onTap: () => showSwapSheet(context, day: day, slot: slot),
         ),
       );
     }
@@ -224,39 +279,41 @@ class _PlanScreenState extends State<PlanScreen> {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(children: [
-            FoodTile(r.emoji),
+            Hero(tag: 'r-${r.id}-${m.day}-${m.slot}', child: FoodTile(r.emoji, size: 56)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      runSpacing: 2,
-                      children: [
-                    Text(slotNames[slot]!,
-                        style: TextStyle(
-                            color: cs.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12)),
-                    if (m.locked) ...[
-                      const SizedBox(width: 4),
-                      Icon(Icons.lock, size: 14, color: cs.primary),
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    runSpacing: 2,
+                    children: [
+                      Text(slotNames[slot]!,
+                          style: TextStyle(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12)),
+                      if (m.locked) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.lock, size: 14, color: cs.primary),
+                      ],
+                      if (m.leftover) const _Badge('🍱 بواقي من أمس'),
+                      if (pot) const _Badge('🍲 تكفي يومين'),
+                      if (hits > 0 && !m.leftover) _Badge('🧊 $hits من ثلاجتك'),
                     ],
-                    if (m.leftover) const _Badge('🍱 بواقي من أمس'),
-                    if (pot) const _Badge('🍲 تكفي يومين'),
-                    if (hits > 0 && !m.leftover) _Badge('🧊 $hits من ثلاجتك'),
-                  ]),
+                  ),
                   const SizedBox(height: 2),
                   Text(r.title,
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
+                          fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 2),
                   Text(
                       m.leftover
-                          ? 'جاهزة، سخّنها بس · ${m.servings} حصص'
+                          ? 'جاهزة، سخّنها بس'
                           : '${r.minutes} دقيقة · ${m.servings} حصص${pot ? ' (لليومين)' : ''} · ${fmtMoney(cost)}',
                       style: Theme.of(context).textTheme.bodySmall),
+                  MacroRow.of(r),
                 ],
               ),
             ),
@@ -264,7 +321,7 @@ class _PlanScreenState extends State<PlanScreen> {
               onSelected: (v) {
                 switch (v) {
                   case 'swap':
-                    _swap(context, app, m, slot);
+                    showSwapSheet(context, day: day, slot: slot, meal: m);
                   case 'lock':
                     app.toggleLock(m);
                   case 'remove':
@@ -286,34 +343,6 @@ class _PlanScreenState extends State<PlanScreen> {
       ),
     );
   }
-
-  void _swap(
-      BuildContext context, AppState app, PlannedMeal? m, String slot) {
-    final target = m ??
-        PlannedMeal(
-            day: day, slot: slot, recipeId: '', servings: app.prefs.people);
-    final plan = [...app.plan, if (m == null) target];
-    final alts = app.planner().alternatives(plan, target);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (ctx) => _SwapSheet(
-        alts: alts,
-        leftover: m?.leftover ?? false,
-        currentTotal: m == null ? null : app.total,
-        budget: app.prefs.budget,
-        onPick: (r) {
-          Navigator.pop(ctx);
-          if (m == null) {
-            app.addMeal(day, slot, r.id);
-          } else {
-            app.replaceMeal(m, r.id);
-          }
-        },
-      ),
-    );
-  }
 }
 
 class _Badge extends StatelessWidget {
@@ -321,110 +350,14 @@ class _Badge extends StatelessWidget {
   const _Badge(this.text);
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsetsDirectional.only(start: 6),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        color: cs.tertiaryContainer,
+        color: Brand.yellow.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(text,
-          style: TextStyle(fontSize: 11, color: cs.onTertiaryContainer)),
-    );
-  }
-}
-
-class _SwapSheet extends StatefulWidget {
-  final List<Alternative> alts;
-  final bool leftover;
-  final double? currentTotal;
-  final double budget;
-  final ValueChanged<Recipe> onPick;
-  const _SwapSheet(
-      {required this.alts,
-      required this.leftover,
-      required this.currentTotal,
-      required this.budget,
-      required this.onPick});
-  @override
-  State<_SwapSheet> createState() => _SwapSheetState();
-}
-
-class _SwapSheetState extends State<_SwapSheet> {
-  String q = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final items = widget.alts
-        .where((a) => q.isEmpty || a.recipe.title.contains(q))
-        .toList();
-    final cs = Theme.of(context).colorScheme;
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.75,
-      maxChildSize: 0.95,
-      builder: (_, ctrl) => Column(children: [
-        if (widget.leftover)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-                'هذي بواقي من طبخة أمس. لو استبدلتها، طبخة أمس بتصير لليوم الواحد بس.'),
-          ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: TextField(
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'ابحث عن وصفة',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            onChanged: (v) => setState(() => q = v.trim()),
-          ),
-        ),
-        Expanded(
-          child: items.isEmpty
-              ? const Center(child: Text('ما فيه بدائل تناسب تفضيلاتك'))
-              : ListView.builder(
-                  controller: ctrl,
-                  itemCount: items.length,
-                  itemBuilder: (_, i) {
-                    final a = items[i];
-                    final r = a.recipe;
-                    final total = a.total;
-                    String? delta;
-                    Color? color;
-                    if (widget.currentTotal != null) {
-                      final d = total - widget.currentTotal!;
-                      delta = d.abs() < 0.5
-                          ? 'نفس التكلفة'
-                          : (d > 0
-                              ? '+${fmtMoney(d)}'
-                              : '−${fmtMoney(-d)}');
-                      color = d > 0.5
-                          ? cs.error
-                          : (d < -0.5 ? Colors.green.shade700 : null);
-                    } else if (total > 0) {
-                      delta = 'الأسبوع: ${fmtMoney(total)}';
-                      color = total > widget.budget ? cs.error : null;
-                    }
-                    return ListTile(
-                      leading: FoodTile(r.emoji, size: 44),
-                      title: Text(r.title),
-                      subtitle: Text(
-                          '${r.minutes} دقيقة · ${r.kcal} سعرة${a.inPlan ? ' · موجودة بيوم ثاني' : ''}'),
-                      trailing: delta == null
-                          ? null
-                          : Text(delta,
-                              style: TextStyle(
-                                  color: color, fontWeight: FontWeight.w600)),
-                      onTap: () => widget.onPick(r),
-                    );
-                  },
-                ),
-        ),
-      ]),
+      child: Text(text, style: const TextStyle(fontSize: 11)),
     );
   }
 }

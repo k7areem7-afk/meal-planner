@@ -28,34 +28,29 @@ class Pricing {
   }
 
   /// Cost per serving, proportional to what the recipe uses.
-  double costPerServing(Recipe r, {bool pantry = false}) {
+  double costPerServing(Recipe r) {
     var t = 0.0;
     for (final l in r.lines) {
-      final i = catalog.ingredients[l.ingId]!;
-      if (i.pantry && !pantry) continue;
+      final i = catalog.ingredients[l.ingId];
+      if (i == null) continue;
       t += l.b * unitPrice(i);
     }
-    return t / r.servings;
+    return r.servings <= 0 ? 0 : t / r.servings;
   }
 }
 
 // ------------------------------------------------------------- filtering
 
-bool recipeAllowed(Recipe r, Prefs p, {String? slot}) {
+/// [strict] also enforces the "soft" diets (keto, high protein...). The
+/// planner relaxes them when nothing fits a slot.
+bool recipeAllowed(Recipe r, Prefs p, {String? slot, bool strict = true}) {
   if (slot != null && !r.meals.contains(slot)) return false;
   if (r.allergens.any(p.allergies.contains)) return false;
   if (r.tags.any(p.dislikes.contains)) return false;
   if (!r.appliances.every(p.appliances.contains)) return false;
-  if (p.diet == 'vegetarian' && r.tags.any(meatTags.contains)) return false;
-  final main = slot == null || slot != 'b';
-  if (main && p.diet == 'low_carb' && r.carbs > 40 && !r.meals.contains('b')) {
-    return false;
-  }
-  if (main &&
-      p.diet == 'high_protein' &&
-      r.protein < 22 &&
-      !r.meals.contains('b')) {
-    return false;
+  for (final d in p.diets) {
+    if (!strict && !hardDiets.contains(d)) continue;
+    if (!r.diets.contains(d)) return false;
   }
   return true;
 }
@@ -108,7 +103,7 @@ double shoppingTotal(Catalog c, Pricing pr, List<PlannedMeal> meals,
     {Set<String> have = const {}}) {
   var t = 0.0;
   for (final g in groceryLines(c, pr, meals)) {
-    if (g.ing.pantry || have.contains(g.ing.id)) continue;
+    if (have.contains(g.ing.id)) continue;
     t += g.cost;
   }
   return t;
@@ -218,8 +213,21 @@ class Planner {
     return perDay * _weight[slot]! / w;
   }
 
-  List<Recipe> candidates(String slot) =>
-      c.recipes.where((r) => recipeAllowed(r, p, slot: slot)).toList();
+  List<Recipe> candidates(String slot) {
+    final strict =
+        c.recipes.where((r) => recipeAllowed(r, p, slot: slot)).toList();
+    if (strict.length >= 3) return strict;
+    final loose = c.recipes
+        .where((r) => recipeAllowed(r, p, slot: slot, strict: false))
+        .toList();
+    return loose.isEmpty ? strict : loose;
+  }
+
+  double _kcalTarget(String slot) {
+    final slots = <String>[for (final s in slotOrder) if (p.meals.contains(s)) s];
+    final w = slots.fold<double>(0, (a, s) => a + _weight[s]!);
+    return w == 0 ? 0 : p.kcal * _weight[slot]! / w;
+  }
 
   /// 0: not in the week yet. 1: elsewhere in the week. 2: yesterday, today
   /// or tomorrow (never allowed unless nothing else fits).
@@ -247,6 +255,11 @@ class Planner {
     s -= (cost - target).abs() * 0.3;
     if (p.styles.isNotEmpty && r.styles.any(p.styles.contains)) s += 4;
     s += min(3, fridgeHits(r)) * 2.5; // use what is already in the fridge
+    s += min(2, r.vibes.where(p.vibes.contains).length) * 3;
+    if (p.kcalTarget) {
+      s -= (r.kcal - _kcalTarget(slot)).abs() / 60;
+      if (p.protein >= 100 && r.protein >= 25) s += 1.5;
+    }
     if (r.minutes <= 30) s += 0.5;
     return s + rng.nextDouble() * 4;
   }
@@ -498,4 +511,183 @@ int? stepMinutes(String step) {
   if (step.contains('ساعة ونصف')) return 90;
   if (step.contains('ساعة')) return 60;
   return null;
+}
+
+// ------------------------------------------------------------- nutrition
+
+class Macros {
+  double kcal = 0, protein = 0, carbs = 0, fat = 0;
+  void add(Recipe r) {
+    kcal += r.kcal;
+    protein += r.protein;
+    carbs += r.carbs;
+    fat += r.fat;
+  }
+}
+
+/// What one person eats in a day.
+Macros dayMacros(Catalog c, List<PlannedMeal> plan, int day) {
+  final m = Macros();
+  for (final x in plan.where((x) => x.day == day)) {
+    final r = c.recipeById[x.recipeId];
+    if (r != null) m.add(r);
+  }
+  return m;
+}
+
+// ------------------------------------------------------------- from my fridge
+
+class FridgeMatch {
+  final Recipe recipe;
+  final int have;
+  final int total;
+  final List<Ingredient> missing;
+  FridgeMatch(this.recipe, this.have, this.total, this.missing);
+  double get ratio => total == 0 ? 0 : have / total;
+}
+
+/// Library recipes ranked by how much of them is already at home.
+List<FridgeMatch> matchFridge(Catalog c, Prefs p, {int limit = 5}) {
+  final out = <FridgeMatch>[];
+  for (final r in c.recipes) {
+    if (!recipeAllowed(r, p, strict: false)) continue;
+    final main = r.lines
+        .map((l) => c.ingredients[l.ingId])
+        .whereType<Ingredient>()
+        .where((i) => !i.isSpice && !i.pantry)
+        .toList();
+    if (main.isEmpty) continue;
+    final have = main.where((i) => p.fridge.contains(i.id)).length;
+    if (have == 0) continue;
+    out.add(FridgeMatch(r, have, main.length,
+        main.where((i) => !p.fridge.contains(i.id)).toList()));
+  }
+  out.sort((a, b) {
+    final byRatio = b.ratio.compareTo(a.ratio);
+    return byRatio != 0 ? byRatio : b.have.compareTo(a.have);
+  });
+  return out.take(limit).toList();
+}
+
+// ------------------------------------------------------------- recipes from AI
+
+const _vol = {'tsp': 5.0, 'tbsp': 15.0, 'cup': 240.0};
+
+/// (amount in base unit, grams) or null when the unit does not fit.
+(double, double)? toBase(Ingredient i, double q, String u) {
+  final base = i.unit;
+  if (u == 'pc') {
+    if (base == 'pc') return (q, q * (i.pcWeight ?? 100));
+    if (i.pcWeight == null) return null;
+    final g = q * i.pcWeight!;
+    return (base == 'g' ? g : g / i.density, g);
+  }
+  if (_vol.containsKey(u)) {
+    final ml = q * _vol[u]!;
+    if (base == 'ml') return (ml, ml * i.density);
+    if (base == 'g') return (ml * i.density, ml * i.density);
+    return null;
+  }
+  if (u == 'g') {
+    if (base == 'g') return (q, q);
+    if (base == 'ml') return (q / i.density, q);
+    if (base == 'pc' && i.pcWeight != null) return (q / i.pcWeight!, q);
+    return null;
+  }
+  if (u == 'ml') {
+    if (base == 'ml') return (q, q * i.density);
+    if (base == 'g') return (q * i.density, q * i.density);
+    return null;
+  }
+  return null;
+}
+
+/// Turns a recipe written by the AI (or the user) into a full recipe:
+/// unknown ingredients are dropped, cost and nutrition are computed here.
+Recipe? buildRecipe(Map<String, dynamic> j, Catalog c, String id) {
+  final title = (j['title'] ?? '').toString().trim();
+  if (title.isEmpty) return null;
+  final servings = ((j['servings'] as num?)?.toInt() ?? 4).clamp(1, 12).toInt();
+  final lines = <RecipeLine>[];
+  var kcal = 0.0, prot = 0.0, carb = 0.0, fat = 0.0;
+  final allergens = <String>{}, tags = <String>{};
+  for (final raw in (j['ingredients'] as List? ?? const [])) {
+    if (raw is! Map) continue;
+    final ing = c.ingredients[(raw['id'] ?? '').toString()];
+    final q = (raw['qty'] as num?)?.toDouble() ?? 0;
+    final u = (raw['unit'] ?? '').toString();
+    if (ing == null || q <= 0) continue;
+    if (lines.any((l) => l.ingId == ing.id)) continue;
+    final conv = toBase(ing, q, u);
+    if (conv == null) continue;
+    lines.add(RecipeLine(ing.id, q, u, conv.$1));
+    final g = conv.$2;
+    kcal += ing.nutr[0] * g / 100;
+    prot += ing.nutr[1] * g / 100;
+    carb += ing.nutr[2] * g / 100;
+    fat += ing.nutr[3] * g / 100;
+    allergens.addAll(ing.allergens);
+    tags.addAll(ing.tags);
+  }
+  final steps = (j['steps'] as List? ?? const [])
+      .map((e) => e.toString().trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+  if (steps.isEmpty) steps.add('حضّر المكونات واطبخها حسب رغبتك.');
+  final meals = (j['meals'] as List? ?? const ['l', 'd'])
+      .map((e) => e.toString())
+      .where(slotOrder.contains)
+      .toList();
+  final minutes = ((j['minutes'] as num?)?.toInt() ?? 30).clamp(5, 300).toInt();
+  final ids = lines.map((l) => l.ingId).toSet();
+  final k = kcal / servings, pr = prot / servings, cb = carb / servings;
+  final fried = steps.any((s) => s.contains('اقل'));
+  final diets = <String>[];
+  if (!tags.any({'chicken', 'beef', 'lamb', 'liver'}.contains)) {
+    diets.add('pescatarian');
+    if (!tags.any({'fish', 'seafood'}.contains)) {
+      diets.add('vegetarian');
+      if (!allergens.any({'dairy', 'eggs'}.contains) && !ids.contains('honey')) {
+        diets.add('vegan');
+      }
+    }
+  }
+  if (lines.isNotEmpty && cb <= 15) diets.add('keto');
+  if (pr >= 25) diets.add('high_protein');
+  if (lines.isNotEmpty && k <= 550 && pr >= 15 && !fried) diets.add('glp1');
+  if (!fried) diets.add('anti_inflammatory');
+  if (ids.contains('olive_oil') && !fried) diets.add('mediterranean');
+  return Recipe(
+    id: id,
+    title: title,
+    emoji: _emoji(j['emoji']),
+    meals: meals.isEmpty ? ['l', 'd'] : meals,
+    styles: (j['styles'] as List? ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    minutes: minutes,
+    appliances: (j['appliances'] as List? ?? const [])
+        .map((e) => e.toString())
+        .where((a) => a != 'stove')
+        .toList(),
+    servings: servings,
+    lines: lines,
+    steps: steps,
+    kcal: (j['kcal'] as num?)?.toInt() ?? k.round(),
+    protein: double.parse(pr.toStringAsFixed(1)),
+    carbs: double.parse(cb.toStringAsFixed(1)),
+    fat: double.parse((fat / servings).toStringAsFixed(1)),
+    allergens: allergens.toList()..sort(),
+    tags: tags.toList()..sort(),
+    keeps: j['keeps'] == true,
+    fried: fried,
+    diets: diets,
+    vibes: [if (minutes <= 25) 'quick'],
+    user: true,
+  );
+}
+
+String _emoji(dynamic v) {
+  final e = (v ?? '').toString().trim();
+  return e.isEmpty || e.length > 8 ? '🍽️' : e;
 }

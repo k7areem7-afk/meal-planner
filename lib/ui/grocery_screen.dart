@@ -14,14 +14,10 @@ class GroceryScreen extends StatelessWidget {
     final app = AppScope.of(context);
     final pr = app.pricing;
     final lines = groceryLines(app.c, pr, app.plan);
-    final visible = lines
-        .where((g) => !app.have.contains(g.ing.id))
-        .where((g) => app.showPantry || !g.ing.pantry)
-        .toList();
+    final visible =
+        lines.where((g) => !app.have.contains(g.ing.id)).toList();
     final haveLines =
         lines.where((g) => app.have.contains(g.ing.id)).toList();
-    final hiddenPantry =
-        lines.where((g) => g.ing.pantry && !app.have.contains(g.ing.id)).length;
 
     final byAisle = <String, List<GroceryLine>>{};
     for (final g in visible) {
@@ -35,7 +31,7 @@ class GroceryScreen extends StatelessWidget {
     final total = app.total + customTotal;
     final left = visible
             .where((g) => !app.checked.contains(g.ing.id))
-            .fold<double>(0, (a, g) => g.ing.pantry ? a : a + g.cost) +
+            .fold<double>(0, (a, g) => a + g.cost) +
         app.custom
             .where((c) => !app.checked.contains(c.id))
             .fold<double>(0, (a, c) => a + c.price);
@@ -59,8 +55,6 @@ class GroceryScreen extends StatelessWidget {
           PopupMenuButton<String>(
             onSelected: (v) {
               switch (v) {
-                case 'pantry':
-                  app.setShowPantry(!app.showPantry);
                 case 'clear':
                   app.clearChecked();
                 case 'prices':
@@ -69,11 +63,6 @@ class GroceryScreen extends StatelessWidget {
               }
             },
             itemBuilder: (_) => [
-              PopupMenuItem(
-                  value: 'pantry',
-                  child: Text(app.showPantry
-                      ? 'إخفاء أساسيات المطبخ'
-                      : 'إظهار أساسيات المطبخ')),
               const PopupMenuItem(value: 'clear', child: Text('إلغاء كل التأشير')),
               const PopupMenuItem(value: 'prices', child: Text('تعديل الأسعار')),
             ],
@@ -109,14 +98,13 @@ class GroceryScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-                if (!app.showPantry && hiddenPantry > 0)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                    child: Text(
-                      'مخفي $hiddenPantry من أساسيات المطبخ (ملح، بهارات، زيت...). أظهرها من القائمة ⋮.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  child: Text(
+                    'اللي عندك في الثلاجة أو المطبخ (ومنها البهارات) ما يظهر هنا. عدّلها من زر الثلاجة 🧊 في الخطة.',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
+                ),
                 for (final a in app.c.aisles)
                   if (byAisle.containsKey(a.id)) ...[
                     SectionTitle(a.name),
@@ -187,7 +175,7 @@ class GroceryScreen extends StatelessWidget {
       value: checked,
       onChanged: (_) => app.toggleChecked(g.ing.id),
       controlAffinity: ListTileControlAffinity.leading,
-      title: Text(g.ing.name,
+      title: Text('${g.ing.emoji} ${g.ing.name}',
           style: TextStyle(
               fontWeight: FontWeight.w600,
               decoration: checked ? TextDecoration.lineThrough : null)),
@@ -203,7 +191,7 @@ class GroceryScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(g.ing.pantry ? '—' : fmtMoney(g.cost),
+              Text(fmtMoney(g.cost),
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               Icon(edited ? Icons.edit : Icons.more_horiz,
                   size: 16,

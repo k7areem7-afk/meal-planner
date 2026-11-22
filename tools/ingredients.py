@@ -183,3 +183,55 @@ I("chickpeas_dry", "حمص حب جاف", "dry", "g", 1000, 9, (364, 19, 61, 6), 
 I("sumac", "سماق", "spices", "g", 100, 7, SP, dens=0.5, pantry=True)
 I("pom_molasses", "دبس رمان", "condiments", "ml", 300, 9, (250, 0, 62, 0), dens=1.3)
 I("ketchup", "كاتشب", "condiments", "g", 500, 8, (112, 1.7, 26, 0.1), dens=1.1)
+
+# ---------------------------------------------------------------- v3 additions (Egyptian & healthy)
+I("broad_beans_dry", "فول مدشوش", "dry", "g", 1000, 10, (341, 26, 58, 1.5), dens=0.8)
+I("pastrami", "بسطرمة", "meat", "g", 200, 18, (250, 25, 2, 16), tags="beef")
+I("roumi", "جبنة رومي", "dairy", "g", 250, 15, (390, 26, 2, 31), dens=0.45, allergens="dairy")
+I("cottage", "جبنة قريش", "dairy", "g", 500, 10, (98, 11, 3.4, 4.3), allergens="dairy")
+I("beef_liver", "كبدة بقري", "meat", "g", 500, 15, (135, 20, 3.9, 3.6), tags="beef liver")
+I("grape_leaves", "ورق عنب", "canned", "g", 500, 14, (93, 5.6, 17, 2.1))
+I("dill", "شبت", "produce", "pc", 1, 1.5, (43, 3.5, 7, 1.1), 40, "ربطة")
+I("taro", "قلقاس", "produce", "g", 1000, 9, (112, 1.5, 26, 0.2))
+I("black_eyed_peas", "لوبيا معلبة", "canned", "g", 400, 4, (116, 7.7, 21, 0.5), 400, "علبة")
+I("orzo", "لسان عصفور", "dry", "g", 400, 4, (371, 13, 75, 1.5), dens=0.8, allergens="gluten")
+I("minced_chicken", "دجاج مفروم", "meat", "g", 500, 15, (143, 17, 0, 8), tags="chicken")
+I("sweet_potato", "بطاطا حلوة", "produce", "g", 1000, 9, (86, 1.6, 20, 0.1), 250, "حبة")
+I("wheat", "قمح بليلة", "dry", "g", 1000, 10, (340, 13, 72, 2.5), dens=0.75, allergens="gluten")
+
+# Emoji shown on ingredient cards (instead of photos).
+EMOJI = {
+    "onion": "🧅", "garlic": "🧄", "tomato": "🍅", "potato": "🥔", "carrot": "🥕",
+    "cucumber": "🥒", "lettuce": "🥬", "bell_pepper": "🫑", "zucchini": "🥒",
+    "eggplant": "🍆", "parsley": "🌿", "coriander": "🌿", "mint": "🌱", "lemon": "🍋",
+    "green_chili": "🌶️", "mushroom": "🍄", "banana": "🍌", "dates": "🌴",
+    "avocado": "🥑", "cauliflower": "🥦", "okra": "🌱", "peas_carrots": "🫛",
+    "molokhia": "🥬", "green_beans": "🫛", "broccoli": "🥦", "chicken_whole": "🐔",
+    "chicken_breast": "🍗", "chicken_thigh": "🍗", "chicken_liver": "🫀",
+    "minced_beef": "🥩", "beef_cubes": "🥩", "lamb": "🍖", "fish_fillet": "🐟",
+    "shrimp": "🦐", "eggs": "🥚", "milk": "🥛", "yogurt": "🥣", "labneh": "🥣",
+    "feta": "🧀", "halloumi": "🧀", "mozzarella": "🧀", "cheddar": "🧀",
+    "cream": "🥛", "butter": "🧈", "arabic_bread": "🫓", "toast": "🍞",
+    "tortilla": "🫓", "rice": "🍚", "pasta": "🍝", "spaghetti": "🍝", "bulgur": "🌾",
+    "freekeh": "🌾", "jareesh": "🌾", "oats": "🥣", "flour": "🌾", "red_lentils": "🫘",
+    "brown_lentils": "🫘", "vermicelli": "🍜", "noodles": "🍜", "sugar": "🍬",
+    "baking_powder": "🧂", "almonds": "🌰", "raisins": "🍇", "sesame": "🌰",
+    "honey": "🍯", "fava_can": "🥫", "chickpeas_can": "🥫", "kidney_beans": "🥫",
+    "corn_can": "🌽", "tuna_can": "🐟", "crushed_tomatoes": "🥫",
+    "tomato_paste": "🥫", "coconut_milk": "🥥", "tahini": "🫙", "olive_oil": "🫒",
+    "veg_oil": "🛢️", "vinegar": "🍶", "soy_sauce": "🍶", "mayo": "🫙",
+    "hot_sauce": "🌶️", "stock_cube": "🧊", "salt": "🧂", "black_pepper": "🧂",
+    "cumin": "🧂", "turmeric": "🧂", "paprika": "🌶️", "kabsa_spice": "🧂",
+    "seven_spice": "🧂", "cinnamon": "🪵", "cardamom": "🟢", "curry": "🧂",
+    "chili_flakes": "🌶️", "oregano": "🌿", "bay_leaf": "🍃", "black_lime": "🍋",
+    "ginger": "🫚", "nutmeg": "🌰", "zaatar": "🌿", "spinach": "🥬", "cabbage": "🥬",
+    "apple": "🍎", "white_beans": "🥫", "olives": "🫒", "cheese_triangles": "🧀",
+    "cream_cheese": "🧀", "peanut_butter": "🥜", "halawa": "🍬",
+    "sambosa_sheets": "🔺", "breadcrumbs": "🍞", "lasagna": "🍝",
+    "burger_buns": "🍔", "chicken_wings": "🍗", "quinoa": "🌾",
+    "chickpeas_dry": "🫘", "sumac": "🧂", "pom_molasses": "🍶", "ketchup": "🍅",
+    "broad_beans_dry": "🫘", "pastrami": "🥓", "roumi": "🧀", "cottage": "🧀",
+    "beef_liver": "🫀", "grape_leaves": "🍃", "dill": "🌿", "taro": "🥔",
+    "black_eyed_peas": "🥫", "orzo": "🍚", "minced_chicken": "🍗",
+    "sweet_potato": "🍠", "wheat": "🌾",
+}

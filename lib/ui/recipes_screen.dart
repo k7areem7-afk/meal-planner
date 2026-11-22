@@ -108,7 +108,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('اللي تناسب تفضيلاتي فقط'),
-            subtitle: const Text('الحساسية، اللي ما تحبه، الأجهزة، النظام'),
+            subtitle: const Text('الحساسية، اللي ما تحبه، الأجهزة، النظام الغذائي'),
             value: onlyMine,
             onChanged: (v) => setState(() => onlyMine = v),
           ),
@@ -128,7 +128,13 @@ class _RecipesScreenState extends State<RecipesScreen> {
                   leading: FoodTile(r.emoji, size: 48),
                   title: Text(r.title,
                       style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(recipeSubtitle(r, pr.costPerServing(r))),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(recipeSubtitle(r, pr.costPerServing(r))),
+                      MacroRow.of(r),
+                    ],
+                  ),
                   trailing: IconButton(
                     tooltip: 'أضف للخطة',
                     icon: const Icon(Icons.playlist_add),

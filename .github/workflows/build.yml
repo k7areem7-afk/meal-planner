@@ -34,6 +34,7 @@ jobs:
           flutter create --org com.kareem --project-name sufra --platforms android . 2>&1 | tee create.log
           rm -f test/widget_test.dart
           sed -i 's/android:label="sufra"/android:label="سفرة"/' android/app/src/main/AndroidManifest.xml
+          python3 ci/patch_manifest.py android/app/src/main/AndroidManifest.xml
           # Same signing key on every build, so a new APK installs over the old one.
           mkdir -p ~/.android && cp ci/debug.keystore ~/.android/debug.keystore
 
