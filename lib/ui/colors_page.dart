@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../state.dart';
@@ -12,11 +13,11 @@ class ColorsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('ألوان التطبيق 🎨')),
+      appBar: AppBar(title: Text(tx('ألوان التطبيق 🎨', 'App colors 🎨'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('اختار الألوان اللي تعجبك، وتتغير على طول:',
+          Text(tx('اختار الألوان اللي تعجبك، وتتغير على طول:', 'Pick the colors you like. They change right away:'),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           GridView.builder(
@@ -39,22 +40,22 @@ class ColorsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Text('الوضع', style: TextStyle(fontWeight: FontWeight.w800)),
+          Text(tx('الوضع', 'Mode'), style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           SegmentedButton<String>(
-            segments: const [
+            segments: [
               ButtonSegment(
                   value: 'system',
                   icon: Icon(Icons.brightness_auto),
-                  label: Text('تلقائي')),
+                  label: Text(tx('تلقائي', 'System'))),
               ButtonSegment(
                   value: 'light',
                   icon: Icon(Icons.light_mode),
-                  label: Text('فاتح')),
+                  label: Text(tx('فاتح', 'Light'))),
               ButtonSegment(
                   value: 'dark',
                   icon: Icon(Icons.dark_mode),
-                  label: Text('داكن')),
+                  label: Text(tx('داكن', 'Dark'))),
             ],
             selected: {app.themeMode},
             onSelectionChanged: (s) => app.setThemeMode(s.first),
@@ -149,7 +150,7 @@ class _PaletteCard extends StatelessWidget {
                         color: p.primary,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text('زر',
+                      child: Text(tx('زر', 'Button'),
                           style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700)),

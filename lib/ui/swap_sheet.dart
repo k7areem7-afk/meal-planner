@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../ai.dart';
@@ -51,8 +52,8 @@ class _SwapSheetState extends State<_SwapSheet> {
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final title = widget.meal == null
-        ? 'أضف ${slotNames[widget.slot]}'
-        : 'استبدل ${app.c.recipeById[widget.meal!.recipeId]?.title ?? ''}';
+        ? tx('أضف ${slotNames[widget.slot]}', 'Add ${slotNames[widget.slot]}')
+        : tx('استبدل ${app.c.recipeById[widget.meal!.recipeId]?.title ?? ''}', 'Replace ${app.c.recipeById[widget.meal!.recipeId]?.title ?? ''}');
     return DefaultTabController(
       length: 3,
       child: DraggableScrollableSheet(
@@ -67,10 +68,10 @@ class _SwapSheetState extends State<_SwapSheet> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           ),
-          const TabBar(tabs: [
-            Tab(text: '💡 اقتراحاتنا'),
-            Tab(text: '📖 اختار وصفة'),
-            Tab(text: '✍️ اكتبها أنت'),
+          TabBar(tabs: [
+            Tab(text: tx('💡 اقتراحاتنا', '💡 Suggestions')),
+            Tab(text: tx('📖 اختار وصفة', '📖 Pick a recipe')),
+            Tab(text: tx('✍️ اكتبها أنت', '✍️ Write your own')),
           ]),
           Expanded(
             child: TabBarView(children: [
@@ -96,7 +97,7 @@ class _SwapSheetState extends State<_SwapSheet> {
     final current = widget.meal == null ? null : app.total;
     final cs = Theme.of(context).colorScheme;
     if (alts.isEmpty) {
-      return const Center(child: Text('ما فيه بدائل تناسب تفضيلاتك'));
+      return Center(child: Text(tx('ما فيه بدائل تناسب تفضيلاتك', 'No alternatives fit your preferences')));
     }
     return ListView.builder(
       controller: ctrl,
@@ -109,7 +110,7 @@ class _SwapSheetState extends State<_SwapSheet> {
         if (current != null) {
           final d = a.total - current;
           delta = d.abs() < 0.5
-              ? 'نفس التكلفة'
+              ? tx('نفس التكلفة', 'Same cost')
               : (d > 0 ? '+${fmtMoney(d)}' : '−${fmtMoney(-d)}');
           color = d > 0.5 ? cs.error : (d < -0.5 ? Brand.green : null);
         }
@@ -124,9 +125,9 @@ class _SwapSheetState extends State<_SwapSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text([
-                  '${r.minutes} دقيقة',
-                  if (hits > 0) '🧊 $hits من ثلاجتك',
-                  if (a.inPlan) 'موجودة بيوم ثاني',
+                  tx('${r.minutes} دقيقة', '${r.minutes} min'),
+                  if (hits > 0) tx('🧊 $hits من ثلاجتك', '🧊 $hits from your fridge'),
+                  if (a.inPlan) tx('موجودة بيوم ثاني', 'On another day'),
                 ].join(' · ')),
                 MacroRow.of(r),
               ],
@@ -153,21 +154,21 @@ class _SwapSheetState extends State<_SwapSheet> {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: TextField(
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
               prefixIcon: Icon(Icons.search),
-              hintText: 'ابحث في كل الوصفات: محشي، مكرونة...'),
+              hintText: tx('ابحث في كل الوصفات: محشي، مكرونة...', 'Search all recipes: mahshi, pasta...')),
           onChanged: (v) => setState(() => q = v.trim()),
         ),
       ),
       SwitchListTile(
         dense: true,
-        title: Text('وصفات ${slotNames[widget.slot]} فقط'),
+        title: Text(tx('وصفات ${slotNames[widget.slot]} فقط', '${slotNames[widget.slot]} recipes only')),
         value: onlySlot,
         onChanged: (v) => setState(() => onlySlot = v),
       ),
       Expanded(
         child: list.isEmpty
-            ? const Center(child: Text('ما لقينا شيء'))
+            ? Center(child: Text(tx('ما لقينا شيء', 'Nothing found')))
             : ListView.builder(
                 itemCount: list.length,
                 itemBuilder: (_, i) {
@@ -180,7 +181,7 @@ class _SwapSheetState extends State<_SwapSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (!ok)
-                          Text('⚠️ ما تناسب تفضيلاتك',
+                          Text(tx('⚠️ ما تناسب تفضيلاتك', '⚠️ Doesn’t fit your preferences'),
                               style: TextStyle(color: Brand.orange)),
                         MacroRow.of(r),
                       ],
@@ -203,20 +204,20 @@ class _SwapSheetState extends State<_SwapSheet> {
   Widget _custom(AppState app) {
     final gemini = app.gemini;
     return ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('اكتب اسم الأكلة اللي تبيها، حتى لو مو موجودة عندنا.',
+      Text(tx('اكتب اسم الأكلة اللي تبيها، حتى لو مو موجودة عندنا.', 'Type the dish you want, even if it is not in our library.'),
           style: TextStyle(fontWeight: FontWeight.w600)),
       const SizedBox(height: 12),
       TextField(
         controller: nameCtrl,
-        decoration: const InputDecoration(
-            hintText: 'مثلاً: مكرونة بالبشاميل والمشروم'),
+        decoration: InputDecoration(
+            hintText: tx('مثلاً: مكرونة بالبشاميل والمشروم', 'e.g. béchamel pasta with mushrooms')),
       ),
       const SizedBox(height: 10),
       TextField(
         controller: kcalCtrl,
         keyboardType: TextInputType.number,
-        decoration: const InputDecoration(
-            hintText: 'السعرات للحصة (اختياري)', suffixText: 'سعرة'),
+        decoration: InputDecoration(
+            hintText: tx('السعرات للحصة (اختياري)', 'Calories per serving (optional)'), suffixText: tx('سعرة', 'kcal')),
       ),
       const SizedBox(height: 16),
       FilledButton.icon(
@@ -234,7 +235,7 @@ class _SwapSheetState extends State<_SwapSheet> {
                 });
                 try {
                   final r = await gemini.forDish(app.c, app.prefs, name);
-                  if (r == null) throw AiException('ما قدرنا نكتب الوصفة.');
+                  if (r == null) throw AiException(tx('ما قدرنا نكتب الوصفة.', 'Could not write the recipe.'));
                   app.saveRecipe(r);
                   if (!mounted) return;
                   _pick(r.id);
@@ -252,14 +253,14 @@ class _SwapSheetState extends State<_SwapSheet> {
                     strokeWidth: 2, color: Colors.white))
             : const Icon(Icons.auto_awesome),
         label: Text(busy
-            ? 'نكتب الوصفة...'
-            : 'اكتب لي الوصفة بالذكاء الاصطناعي'),
+            ? tx('نكتب الوصفة...', 'Writing the recipe...')
+            : tx('اكتب لي الوصفة بالذكاء الاصطناعي', 'Write the recipe with AI')),
       ),
       if (gemini == null)
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(top: 8),
           child: Text(
-              'عشان الذكاء الاصطناعي يكتب الوصفة والمكونات والخطوات، أضف مفتاح Gemini من الإعدادات ← الذكاء الاصطناعي.',
+              tx('عشان الذكاء الاصطناعي يكتب الوصفة والمكونات والخطوات، أضف مفتاح Gemini من الإعدادات ← الذكاء الاصطناعي.', 'For AI to write the recipe, ingredients and steps, add a Gemini key in Settings → AI.'),
               style: TextStyle(fontSize: 12)),
         ),
       if (error != null)
@@ -281,14 +282,14 @@ class _SwapSheetState extends State<_SwapSheet> {
             'servings': 1,
             'kcal': parseNumber(kcalCtrl.text)?.round() ?? 0,
             'ingredients': const [],
-            'steps': const ['وجبة أضفتها بنفسك.'],
+            'steps': [tx('وجبة أضفتها بنفسك.', 'A meal you added yourself.')],
           }, app.c, 'user_${DateTime.now().millisecondsSinceEpoch}');
           if (r == null) return;
           app.saveRecipe(r);
           _pick(r.id);
         },
         icon: const Icon(Icons.add),
-        label: const Text('أضفها كاسم بس (بدون وصفة)'),
+        label: Text(tx('أضفها كاسم بس (بدون وصفة)', 'Add it as a name only (no recipe)')),
       ),
     ]);
   }

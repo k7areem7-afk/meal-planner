@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../engine.dart';
@@ -6,6 +7,7 @@ import '../state.dart';
 import 'anim.dart';
 import 'pref_editors.dart';
 import 'recipe_screen.dart';
+import 'sides.dart';
 import 'swap_sheet.dart';
 import 'theme.dart';
 import 'week_editor.dart';
@@ -25,16 +27,16 @@ class _PlanScreenState extends State<PlanScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('خطة جديدة؟'),
-        content: const Text(
-            'نبني أسبوعاً جديداً من اليوم. الوجبات المقفلة 🔒 تبقى كما هي.'),
+        title: Text(tx('خطة جديدة؟', 'New plan?')),
+        content: Text(
+            tx('نبني أسبوعاً جديداً من اليوم. الوجبات المقفلة 🔒 تبقى كما هي.', 'We build a new week starting today. Locked meals 🔒 stay as they are.')),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(tx('إلغاء', 'Cancel'))),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('ابنِ خطة جديدة')),
+              child: Text(tx('ابنِ خطة جديدة', 'Build a new plan'))),
         ],
       ),
     );
@@ -43,8 +45,8 @@ class _PlanScreenState extends State<PlanScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(res.fits
-          ? 'خطة جديدة بتكلفة ${fmtMoney(res.total)} ✨'
-          : 'الخطة تتجاوز الميزانية: ${fmtMoney(res.total)}'),
+          ? tx('خطة جديدة بتكلفة ${fmtMoney(res.total)} ✨', 'New plan costing ${fmtMoney(res.total)} ✨')
+          : tx('الخطة تتجاوز الميزانية: ${fmtMoney(res.total)}', 'The plan is over budget: ${fmtMoney(res.total)}')),
     ));
   }
 
@@ -53,17 +55,17 @@ class _PlanScreenState extends State<PlanScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('إعادة ضبط الخطة'),
-        content: const Text('بنمسح كل وجبات الأسبوع بما فيها المقفلة.'),
+        title: Text(tx('إعادة ضبط الخطة', 'Reset plan')),
+        content: Text(tx('بنمسح كل وجبات الأسبوع بما فيها المقفلة.', 'This clears every meal of the week, locked ones too.')),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(tx('إلغاء', 'Cancel'))),
           FilledButton(
               style: FilledButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.error),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('امسح')),
+              child: Text(tx('امسح', 'Clear'))),
         ],
       ),
     );
@@ -82,19 +84,19 @@ class _PlanScreenState extends State<PlanScreen> {
         flexibleSpace:
             Container(decoration: BoxDecoration(gradient: Brand.headerGradient)),
         foregroundColor: Colors.white,
-        title: const Text('خطة الأسبوع',
+        title: Text(tx('خطة الأسبوع', 'This week'),
             style: TextStyle(
                 color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22)),
         actions: [
           IconButton(
-              tooltip: 'ثلاجتي',
+              tooltip: tx('ثلاجتي', 'My fridge'),
               onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (_) => const PrefEditPage(PrefSection.fridge))),
               icon: const Icon(Icons.kitchen_outlined)),
           IconButton(
-              tooltip: 'خطة جديدة',
+              tooltip: tx('خطة جديدة', 'New plan'),
               onPressed: _regenerate,
               icon: const Icon(Icons.auto_awesome)),
           PopupMenuButton<String>(
@@ -105,9 +107,9 @@ class _PlanScreenState extends State<PlanScreen> {
                     MaterialPageRoute(builder: (_) => const WeekEditor()));
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'week', child: Text('تعديل كل الأسبوع')),
-              PopupMenuItem(value: 'reset', child: Text('إعادة ضبط الخطة')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'week', child: Text(tx('تعديل كل الأسبوع', 'Edit the whole week'))),
+              PopupMenuItem(value: 'reset', child: Text(tx('إعادة ضبط الخطة', 'Reset plan'))),
             ],
           ),
         ],
@@ -184,7 +186,7 @@ class _PlanScreenState extends State<PlanScreen> {
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const WeekEditor())),
             icon: const Icon(Icons.edit_calendar),
-            label: const Text('تعديل كل وجبات الأسبوع'),
+            label: Text(tx('تعديل كل وجبات الأسبوع', 'Edit all meals of the week')),
           ),
           if (app.plan.isEmpty)
             Padding(
@@ -192,12 +194,12 @@ class _PlanScreenState extends State<PlanScreen> {
               child: Column(children: [
                 const Text('🗓️', style: TextStyle(fontSize: 56)),
                 const SizedBox(height: 8),
-                const Text('الخطة فاضية'),
+                Text(tx('الخطة فاضية', 'The plan is empty')),
                 const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: () => app.generate(keepLocked: false),
                   icon: const Icon(Icons.auto_awesome),
-                  label: const Text('اصنع خطة الأسبوع'),
+                  label: Text(tx('اصنع خطة الأسبوع', 'Make this week’s plan')),
                 ),
               ]),
             ),
@@ -232,17 +234,17 @@ class _PlanScreenState extends State<PlanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${dayName(d)} ${d.day}/${d.month} · للشخص الواحد',
+            Text(tx('${dayName(d)} ${d.day}/${d.month} · للشخص الواحد', '${dayName(d)} ${d.day}/${d.month} · per person'),
                 style: const TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             Row(children: [
               bar('🔥', m.kcal, p.kcal, Brand.orange, ''),
               const SizedBox(width: 8),
-              bar('بروتين', m.protein, p.protein, Brand.green, 'غ'),
+              bar(tx('بروتين', 'Protein'), m.protein, p.protein, Brand.green, tx('غ', 'g')),
               const SizedBox(width: 8),
-              bar('كارب', m.carbs, p.carbs, const Color(0xFFB8860B), 'غ'),
+              bar(tx('كارب', 'Carbs'), m.carbs, p.carbs, const Color(0xFFB8860B), tx('غ', 'g')),
               const SizedBox(width: 8),
-              bar('دهون', m.fat, p.fat, const Color(0xFF8D6E63), 'غ'),
+              bar(tx('دهون', 'Fat'), m.fat, p.fat, const Color(0xFF8D6E63), tx('غ', 'g')),
             ]),
           ],
         ),
@@ -260,7 +262,7 @@ class _PlanScreenState extends State<PlanScreen> {
               backgroundColor: Brand.yellow.withValues(alpha: 0.3),
               child: const Icon(Icons.add)),
           title: Text(slotNames[slot]!),
-          subtitle: const Text('خانة فاضية · اضغط لنقترح لك أو تختار'),
+          subtitle: Text(tx('خانة فاضية · اضغط لنقترح لك أو تختار', 'Empty slot · tap for suggestions or to pick')),
           onTap: () => showSwapSheet(context, day: day, slot: slot),
         ),
       );
@@ -298,9 +300,9 @@ class _PlanScreenState extends State<PlanScreen> {
                         const SizedBox(width: 4),
                         Icon(Icons.lock, size: 14, color: cs.primary),
                       ],
-                      if (m.leftover) const _Badge('🍱 بواقي من أمس'),
-                      if (pot) const _Badge('🍲 تكفي يومين'),
-                      if (hits > 0 && !m.leftover) _Badge('🧊 $hits من ثلاجتك'),
+                      if (m.leftover) _Badge(tx('🍱 بواقي من أمس', '🍱 Yesterday’s leftovers')),
+                      if (pot) _Badge(tx('🍲 تكفي يومين', '🍲 Covers two days')),
+                      if (hits > 0 && !m.leftover) _Badge(tx('🧊 $hits من ثلاجتك', '🧊 $hits from your fridge')),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -310,10 +312,11 @@ class _PlanScreenState extends State<PlanScreen> {
                   const SizedBox(height: 2),
                   Text(
                       m.leftover
-                          ? 'جاهزة، سخّنها بس'
-                          : '${r.minutes} دقيقة · ${m.servings} حصص${pot ? ' (لليومين)' : ''} · ${fmtMoney(cost)}',
+                          ? tx('جاهزة، سخّنها بس', 'Ready, just reheat')
+                          : tx('${r.minutes} دقيقة · ${m.servings} حصص${pot ? ' (لليومين)' : ''} · ${fmtMoney(cost)}', '${r.minutes} min · ${m.servings} servings${pot ? ' (for 2 days)' : ''} · ${fmtMoney(cost)}'),
                       style: Theme.of(context).textTheme.bodySmall),
                   MacroRow.of(r),
+                  SidesRow(meal: m),
                 ],
               ),
             ),
@@ -329,13 +332,13 @@ class _PlanScreenState extends State<PlanScreen> {
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'swap', child: Text('استبدال')),
+                PopupMenuItem(value: 'swap', child: Text(tx('استبدال', 'Swap'))),
                 PopupMenuItem(
                     value: 'lock',
                     child: Text(m.locked
-                        ? 'فك القفل'
-                        : 'قفل (تبقى عند إعادة البناء)')),
-                const PopupMenuItem(value: 'remove', child: Text('حذف')),
+                        ? tx('فك القفل', 'Unlock')
+                        : tx('قفل (تبقى عند إعادة البناء)', 'Lock (kept when rebuilding)'))),
+                PopupMenuItem(value: 'remove', child: Text(tx('حذف', 'Delete'))),
               ],
             ),
           ]),

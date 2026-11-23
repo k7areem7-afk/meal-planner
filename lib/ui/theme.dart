@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 /// A color set the user can pick in Settings ← الألوان.
@@ -28,10 +29,10 @@ class Palette {
   });
 }
 
-const palettes = <Palette>[
+List<Palette> get palettes => <Palette>[
   Palette(
     id: 'mango',
-    name: 'مانجو',
+    name: tx('مانجو', 'Mango'),
     emoji: '🥭',
     primary: Color(0xFFEF6C00),
     primaryLight: Color(0xFFFFA726),
@@ -44,7 +45,7 @@ const palettes = <Palette>[
   ),
   Palette(
     id: 'garden',
-    name: 'حديقة',
+    name: tx('حديقة', 'Garden'),
     emoji: '🥬',
     primary: Color(0xFF5E9E2F),
     primaryLight: Color(0xFF8BC34A),
@@ -57,7 +58,7 @@ const palettes = <Palette>[
   ),
   Palette(
     id: 'lime',
-    name: 'ليمون أخضر',
+    name: tx('ليمون أخضر', 'Lime'),
     emoji: '🍋',
     primary: Color(0xFF7CB342),
     primaryLight: Color(0xFFC0CA33),
@@ -70,7 +71,7 @@ const palettes = <Palette>[
   ),
   Palette(
     id: 'dates',
-    name: 'تمر وقهوة',
+    name: tx('تمر وقهوة', 'Dates & coffee'),
     emoji: '🌴',
     primary: Color(0xFF8D5524),
     primaryLight: Color(0xFFC68642),
@@ -83,7 +84,7 @@ const palettes = <Palette>[
   ),
   Palette(
     id: 'sea',
-    name: 'بحر ومرجان',
+    name: tx('بحر ومرجان', 'Sea & coral'),
     emoji: '🌊',
     primary: Color(0xFF00897B),
     primaryLight: Color(0xFF4DB6AC),
@@ -96,7 +97,7 @@ const palettes = <Palette>[
   ),
   Palette(
     id: 'pomegranate',
-    name: 'رمان',
+    name: tx('رمان', 'Pomegranate'),
     emoji: '🍎',
     primary: Color(0xFFC62828),
     primaryLight: Color(0xFFEF5350),
@@ -109,7 +110,7 @@ const palettes = <Palette>[
   ),
   Palette(
     id: 'saffron',
-    name: 'زعفران',
+    name: tx('زعفران', 'Saffron'),
     emoji: '🌼',
     primary: Color(0xFFF9A825),
     primaryLight: Color(0xFFFFD54F),
@@ -122,7 +123,7 @@ const palettes = <Palette>[
   ),
   Palette(
     id: 'olive',
-    name: 'زيتون',
+    name: tx('زيتون', 'Olive'),
     emoji: '🫒',
     primary: Color(0xFF6B7B3A),
     primaryLight: Color(0xFF9CAF5A),

@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../engine.dart';
@@ -36,12 +37,12 @@ class FoodTile extends StatelessWidget {
 class BudgetBar extends StatelessWidget {
   final double total;
   final double budget;
-  final String label;
+  final String? label;
   const BudgetBar(
       {super.key,
       required this.total,
       required this.budget,
-      this.label = 'تكلفة المشتريات التقديرية'});
+      this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +58,8 @@ class BudgetBar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: Theme.of(context).textTheme.labelLarge),
+            Text(label ?? tx('تكلفة المشتريات التقديرية', 'Estimated shopping cost'),
+                style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 6),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -73,13 +75,13 @@ class BudgetBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 3),
-                  child: Text('من ${fmtMoney(budget)}'),
+                  child: Text(tx('من ${fmtMoney(budget)}', 'of ${fmtMoney(budget)}')),
                 ),
                 const Spacer(),
                 Text(
                   over
-                      ? 'تجاوز ${fmtMoney(total - budget)}'
-                      : 'متبقي ${fmtMoney(budget - total)}',
+                      ? tx('تجاوز ${fmtMoney(total - budget)}', 'Over by ${fmtMoney(total - budget)}')
+                      : tx('متبقي ${fmtMoney(budget - total)}', 'Left ${fmtMoney(budget - total)}'),
                   style: TextStyle(color: color, fontWeight: FontWeight.w700),
                 ),
               ],
@@ -90,7 +92,7 @@ class BudgetBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                    '🧊 التكلفة صفر لأن كل مكونات الخطة متعلّمة إنها موجودة عندك. لو مو صحيح، عدّل "الموجود عندك".',
+                    tx('🧊 التكلفة صفر لأن كل مكونات الخطة متعلّمة إنها موجودة عندك. لو مو صحيح، عدّل "الموجود عندك".', '🧊 The cost is zero because every ingredient in the plan is marked as at home. If that’s wrong, edit "What do you already have?".'),
                     style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
               ),
           ],
@@ -137,9 +139,9 @@ class MacroRow extends StatelessWidget {
         );
     return Wrap(children: [
       pill('🔥', '${kcal.round()}', Brand.orange),
-      pill('بروتين', '${protein.round()}غ', Brand.green),
-      pill('كارب', '${carbs.round()}غ', const Color(0xFFB8860B)),
-      pill('دهون', '${fat.round()}غ', const Color(0xFF8D6E63)),
+      pill(tx('بروتين', 'Protein'), tx('${protein.round()}غ', '${protein.round()}g'), Brand.green),
+      pill(tx('كارب', 'Carbs'), tx('${carbs.round()}غ', '${carbs.round()}g'), const Color(0xFFB8860B)),
+      pill(tx('دهون', 'Fat'), tx('${fat.round()}غ', '${fat.round()}g'), const Color(0xFF8D6E63)),
     ]);
   }
 }
@@ -349,20 +351,20 @@ class OptionCard extends StatelessWidget {
   }
 }
 
-const _days = [
-  'الاثنين',
-  'الثلاثاء',
-  'الأربعاء',
-  'الخميس',
-  'الجمعة',
-  'السبت',
-  'الأحد'
+List<String> get _days => [
+  tx('الاثنين', 'Mon'),
+  tx('الثلاثاء', 'Tue'),
+  tx('الأربعاء', 'Wed'),
+  tx('الخميس', 'Thu'),
+  tx('الجمعة', 'Fri'),
+  tx('السبت', 'Sat'),
+  tx('الأحد', 'Sun')
 ];
 
 String dayName(DateTime d) => _days[d.weekday - 1];
 
 String recipeSubtitle(Recipe r, double costPerServing) =>
-    '${r.minutes} دقيقة · ${fmtMoney(costPerServing)} للحصة';
+    tx('${r.minutes} دقيقة · ${fmtMoney(costPerServing)} للحصة', '${r.minutes} min · ${fmtMoney(costPerServing)} per serving');
 
 Future<double?> askNumber(BuildContext context,
     {required String title,
@@ -385,10 +387,10 @@ Future<double?> askNumber(BuildContext context,
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            onPressed: () => Navigator.pop(ctx), child: Text(tx('إلغاء', 'Cancel'))),
         FilledButton(
           onPressed: () => Navigator.pop(ctx, parseNumber(ctrl.text)),
-          child: const Text('حفظ'),
+          child: Text(tx('حفظ', 'Save')),
         ),
       ],
     ),

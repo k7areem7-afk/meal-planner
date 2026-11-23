@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../engine.dart';
@@ -5,6 +6,7 @@ import '../models.dart';
 import '../state.dart';
 import 'anim.dart';
 import 'recipe_screen.dart';
+import 'sides.dart';
 import 'swap_sheet.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -18,10 +20,10 @@ class WeekEditor extends StatelessWidget {
     final app = AppScope.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تعديل الأسبوع'),
+        title: Text(tx('تعديل الأسبوع', 'Edit week')),
         actions: [
           IconButton(
-            tooltip: 'خطة جديدة',
+            tooltip: tx('خطة جديدة', 'New plan'),
             icon: const Icon(Icons.auto_awesome),
             onPressed: () => app.generate(),
           ),
@@ -48,10 +50,10 @@ class WeekList extends StatelessWidget {
       children: [
         Card(
           color: Brand.yellow.withValues(alpha: 0.15),
-          child: const Padding(
+          child: Padding(
             padding: EdgeInsets.all(12),
             child: Text(
-                '⇄ استبدل أي وجبة باقتراحي أو ببحثك أو اكتبها بنفسك · 🔒 قفلها · 🗑 احذفها · اضغط على الوجبة لتشوف الوصفة'),
+                tx('⇄ استبدل أي وجبة باقتراحي أو ببحثك أو اكتبها بنفسك · 🔒 قفلها · 🗑 احذفها · اضغط على الوجبة لتشوف الوصفة', '⇄ swap any meal with a suggestion, a search or your own dish · 🔒 lock it · 🗑 delete it · tap a meal to see the recipe')),
           ),
         ),
         for (var day = 0; day < 7; day++)
@@ -80,7 +82,7 @@ class WeekList extends StatelessWidget {
                       fontSize: 16, fontWeight: FontWeight.w800)),
               const Spacer(),
               Text(
-                  '🔥 ${macros.kcal.round()}${p.kcalTarget ? ' / ${p.kcal}' : ''} سعرة',
+                  tx('🔥 ${macros.kcal.round()}${p.kcalTarget ? ' / ${p.kcal}' : ''} سعرة', '🔥 ${macros.kcal.round()}${p.kcalTarget ? ' / ${p.kcal}' : ''} kcal'),
                   style: TextStyle(
                       color: Brand.orange, fontWeight: FontWeight.w700)),
             ]),
@@ -102,10 +104,10 @@ class WeekList extends StatelessWidget {
         contentPadding: EdgeInsets.zero,
         leading: const CircleAvatar(child: Icon(Icons.add)),
         title: Text(slotNames[slot]!),
-        subtitle: const Text('فاضية'),
+        subtitle: Text(tx('فاضية', 'Empty')),
         trailing: TextButton(
           onPressed: () => showSwapSheet(context, day: day, slot: slot),
-          child: const Text('أضف'),
+          child: Text(tx('أضف', 'Add')),
         ),
       );
     }
@@ -120,30 +122,31 @@ class WeekList extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (m.leftover) const Text('🍱 بواقي من أمس'),
-          if (partnerOf(app.plan, m) != null) const Text('🍲 تكفي يومين'),
+          if (m.leftover) Text(tx('🍱 بواقي من أمس', '🍱 Yesterday’s leftovers')),
+          if (partnerOf(app.plan, m) != null) Text(tx('🍲 تكفي يومين', '🍲 Covers two days')),
           MacroRow.of(r),
+          SidesRow(meal: m),
         ],
       ),
       onTap: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => RecipeScreen(recipe: r, planned: m))),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         IconButton(
-          tooltip: 'استبدال',
+          tooltip: tx('استبدال', 'Swap'),
           visualDensity: VisualDensity.compact,
           icon: const Icon(Icons.swap_horiz),
           onPressed: () =>
               showSwapSheet(context, day: day, slot: slot, meal: m),
         ),
         IconButton(
-          tooltip: m.locked ? 'فك القفل' : 'قفل',
+          tooltip: m.locked ? tx('فك القفل', 'Unlock') : tx('قفل', 'Lock'),
           visualDensity: VisualDensity.compact,
           icon: Icon(m.locked ? Icons.lock : Icons.lock_open,
               color: m.locked ? Brand.green : null),
           onPressed: () => app.toggleLock(m),
         ),
         IconButton(
-          tooltip: 'حذف',
+          tooltip: tx('حذف', 'Delete'),
           visualDensity: VisualDensity.compact,
           icon: const Icon(Icons.delete_outline),
           onPressed: () => app.removeMeal(m),

@@ -1,6 +1,9 @@
+import 'i18n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'i18n.dart';
+import 'notify.dart';
 import 'state.dart';
 import 'ui/onboarding.dart';
 import 'ui/shell.dart';
@@ -9,7 +12,10 @@ import 'ui/theme.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
-  state.load();
+  state.load().then((_) async {
+    await Notifier.init();
+    if (state.onboarded) Notifier.schedulePlan(state);
+  });
   runApp(AppScope(state: state, child: const SufraApp()));
 }
 
@@ -21,10 +27,11 @@ class SufraApp extends StatelessWidget {
     final app = AppScope.of(context);
     final pal = paletteById(app.themeId);
     Brand.current = pal;
+    L.en = app.lang == 'en';
     return MaterialApp(
-      title: 'سفرة',
+      title: tx('سفرة', 'Sufra'),
       debugShowCheckedModeBanner: false,
-      locale: const Locale('ar'),
+      locale: Locale(app.lang),
       supportedLocales: const [Locale('ar'), Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

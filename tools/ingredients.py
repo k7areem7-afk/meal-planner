@@ -235,3 +235,40 @@ EMOJI = {
     "black_eyed_peas": "🥫", "orzo": "🍚", "minced_chicken": "🍗",
     "sweet_potato": "🍠", "wheat": "🌾",
 }
+
+# ---------------------------------------------------------------- v4 desserts & drinks
+I("tea_biscuits", "بسكويت شاي", "dry", "g", 200, 4, (450, 7, 72, 15), allergens="gluten")
+I("ladyfingers", "بسكويت أصابع (سافوياردي)", "dry", "g", 200, 9, (390, 8, 78, 4), allergens="gluten eggs")
+I("whipping_cream", "كريمة خفق", "dairy", "ml", 250, 9, (340, 2, 3, 36), allergens="dairy")
+I("condensed_milk", "حليب مكثف محلى", "canned", "g", 397, 7, (321, 8, 54, 9), 397, "علبة", allergens="dairy")
+I("cocoa", "كاكاو", "dry", "g", 200, 9, (228, 20, 58, 14), dens=0.5)
+I("dark_chocolate", "شوكولاتة طبخ", "dry", "g", 100, 6, (546, 5, 61, 31), allergens="dairy")
+I("nutella", "شوكولاتة نوتيلا", "dry", "g", 350, 18, (539, 6, 58, 31), dens=1.2, allergens="nuts dairy")
+I("instant_coffee", "قهوة سريعة التحضير", "dry", "g", 100, 15, (350, 12, 41, 0.5), dens=0.4)
+I("vanilla", "فانيليا", "spices", "g", 20, 4, (288, 0, 13, 0), 2, "كيس", dens=0.5, pantry=True)
+I("cornstarch", "نشا", "dry", "g", 400, 5, (381, 0.3, 91, 0.1), dens=0.6)
+I("custard_powder", "بودرة كاسترد", "dry", "g", 300, 7, (380, 0.5, 92, 0.5), dens=0.6)
+I("jelly_powder", "جيلي بودرة", "dry", "g", 85, 3, (380, 7, 89, 0), 85, "علبة")
+I("semolina", "سميد", "dry", "g", 1000, 7, (360, 13, 73, 1), dens=0.65, allergens="gluten")
+I("coconut", "جوز هند مبشور", "dry", "g", 200, 8, (660, 7, 24, 64), dens=0.35)
+I("kunafa", "عجينة كنافة", "frozen", "g", 500, 10, (380, 9, 75, 4), allergens="gluten")
+I("pistachio", "فستق حلبي", "dry", "g", 200, 22, (560, 20, 28, 45), dens=0.55, allergens="nuts")
+I("strawberry", "فراولة", "produce", "g", 250, 9, (32, 0.7, 7.7, 0.3), 15, "حبة")
+I("mango", "مانجو", "produce", "g", 1000, 14, (60, 0.8, 15, 0.4), 300, "حبة")
+I("orange", "برتقال", "produce", "g", 1000, 7, (47, 0.9, 12, 0.1), 180, "حبة")
+I("yeast", "خميرة فورية", "dry", "g", 33, 4, (325, 40, 41, 7.6), 11, "كيس", dens=0.6)
+I("hibiscus", "كركديه", "dry", "g", 100, 6, (49, 1, 11, 0.6), dens=0.3)
+I("tea", "شاي", "dry", "g", 100, 8, (1, 0, 0.3, 0), 2, "كيس", dens=0.4)
+I("arabic_coffee", "قهوة عربية", "dry", "g", 250, 25, (2, 0.1, 0, 0), dens=0.4)
+I("tamarind", "تمر هندي", "dry", "g", 400, 9, (239, 2.8, 62, 0.6))
+I("ice_cream", "آيس كريم فانيليا", "frozen", "ml", 1000, 18, (207, 3.5, 24, 11), dens=0.55, allergens="dairy")
+I("date_syrup", "دبس تمر", "condiments", "ml", 400, 10, (290, 1.5, 70, 0), dens=1.35)
+EMOJI.update({
+    "tea_biscuits": "🍪", "ladyfingers": "🥖", "whipping_cream": "🥛", "condensed_milk": "🥫",
+    "cocoa": "🍫", "dark_chocolate": "🍫", "nutella": "🍫", "instant_coffee": "☕",
+    "vanilla": "🌼", "cornstarch": "🌽", "custard_powder": "🍮", "jelly_powder": "🟥",
+    "semolina": "🌾", "coconut": "🥥", "kunafa": "🧶", "pistachio": "🟢",
+    "strawberry": "🍓", "mango": "🥭", "orange": "🍊", "yeast": "🍞", "hibiscus": "🌺",
+    "tea": "🫖", "arabic_coffee": "☕", "tamarind": "🟤", "ice_cream": "🍨",
+    "date_syrup": "🍯",
+})

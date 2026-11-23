@@ -1,8 +1,10 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../engine.dart';
 import '../state.dart';
+import 'shell.dart';
 import 'price_editor.dart';
 import 'widgets.dart';
 
@@ -41,15 +43,16 @@ class GroceryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('قائمة المشتريات'),
+        leading: const ShellBack(),
+        title: Text(tx('قائمة المشتريات', 'Shopping list')),
         actions: [
           IconButton(
-            tooltip: 'نسخ القائمة',
+            tooltip: tx('نسخ القائمة', 'Copy list'),
             icon: const Icon(Icons.copy_all),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: _asText(app, byAisle)));
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('نُسخت القائمة، الصقها في واتساب')));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(tx('نُسخت القائمة، الصقها في واتساب', 'List copied. Paste it in WhatsApp'))));
             },
           ),
           PopupMenuButton<String>(
@@ -63,22 +66,22 @@ class GroceryScreen extends StatelessWidget {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'clear', child: Text('إلغاء كل التأشير')),
-              const PopupMenuItem(value: 'prices', child: Text('تعديل الأسعار')),
+              PopupMenuItem(value: 'clear', child: Text(tx('إلغاء كل التأشير', 'Uncheck all'))),
+              PopupMenuItem(value: 'prices', child: Text(tx('تعديل الأسعار', 'Edit prices'))),
             ],
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        tooltip: 'أضف عنصراً',
+        tooltip: tx('أضف عنصراً', 'Add item'),
         onPressed: () => _addCustom(context),
         child: const Icon(Icons.add),
       ),
       body: app.plan.isEmpty && app.custom.isEmpty
-          ? const Center(
+          ? Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
-                child: Text('🛒\nالقائمة فاضية. اصنع خطة الأسبوع أولاً.',
+                child: Text(tx('🛒\nالقائمة فاضية. اصنع خطة الأسبوع أولاً.', '🛒\nThe list is empty. Make the week’s plan first.'),
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 18)),
               ),
@@ -89,19 +92,19 @@ class GroceryScreen extends StatelessWidget {
                 BudgetBar(
                     total: total,
                     budget: app.prefs.budget,
-                    label: 'المجموع التقديري عند الكاشير'),
+                    label: tx('المجموع التقديري عند الكاشير', 'Estimated total at the checkout')),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Text(
-                    'اشتريت $done من $count · المتبقي ${fmtMoney(left)} · ${app.c.store(app.prefs.storeId).name}',
+                    tx('اشتريت $done من $count · المتبقي ${fmtMoney(left)} · ${app.c.store(app.prefs.storeId).name}', 'Bought $done of $count · left ${fmtMoney(left)} · ${app.c.store(app.prefs.storeId).name}'),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
                   child: Text(
-                    'اللي عندك في الثلاجة أو المطبخ (ومنها البهارات) ما يظهر هنا. عدّلها من زر الثلاجة 🧊 في الخطة.',
+                    tx('اللي عندك في الثلاجة أو المطبخ (ومنها البهارات) ما يظهر هنا. عدّلها من زر الثلاجة 🧊 في الخطة.', 'What you have in the fridge or kitchen (spices too) is not listed here. Change it with the fridge button 🧊 on the plan.'),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -115,7 +118,7 @@ class GroceryScreen extends StatelessWidget {
                     ),
                   ],
                 if (app.custom.isNotEmpty) ...[
-                  const SectionTitle('أضفتها بنفسك'),
+                  SectionTitle(tx('أضفتها بنفسك', 'Added by you')),
                   Card(
                     child: Column(children: [
                       for (final c in app.custom)
@@ -144,7 +147,7 @@ class GroceryScreen extends StatelessWidget {
                   ),
                 ],
                 if (haveLines.isNotEmpty) ...[
-                  const SectionTitle('موجود عندي (ما ينحسب)'),
+                  SectionTitle(tx('موجود عندي (ما ينحسب)', 'Already at home (not counted)')),
                   Card(
                     child: Column(children: [
                       for (final g in haveLines)
@@ -152,10 +155,10 @@ class GroceryScreen extends StatelessWidget {
                           dense: true,
                           leading: const Icon(Icons.home_outlined),
                           title: Text(g.ing.name),
-                          subtitle: Text('تحتاج ${fmtBase(g.amount, g.ing)}'),
+                          subtitle: Text(tx('تحتاج ${fmtBase(g.amount, g.ing)}', 'Need ${fmtBase(g.amount, g.ing)}')),
                           trailing: TextButton(
                             onPressed: () => app.toggleHave(g.ing.id),
-                            child: const Text('أرجعه للقائمة'),
+                            child: Text(tx('أرجعه للقائمة', 'Back to the list')),
                           ),
                         ),
                     ]),
@@ -180,8 +183,8 @@ class GroceryScreen extends StatelessWidget {
               fontWeight: FontWeight.w600,
               decoration: checked ? TextDecoration.lineThrough : null)),
       subtitle: Text(
-          'تحتاج ${fmtBase(g.amount, g.ing)} · ${g.packs} × ${fmtPack(size, g.ing)}'
-          '${g.recipeIds.length > 1 ? ' · لـ ${g.recipeIds.length} وصفات' : ''}'),
+          tx('تحتاج ${fmtBase(g.amount, g.ing)} · ${g.packs} × ${fmtPack(size, g.ing)}', 'Need ${fmtBase(g.amount, g.ing)} · ${g.packs} × ${fmtPack(size, g.ing)}')
+          tx('${g.recipeIds.length > 1 ? ' · لـ ${g.recipeIds.length} وصفات' : ''}', '${g.recipeIds.length > 1 ? ' · for ${g.recipeIds.length} recipes' : ''}')),
       secondary: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () => _itemMenu(context, app, pr, g),
@@ -214,11 +217,11 @@ class GroceryScreen extends StatelessWidget {
             title: Text(g.ing.name,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(
-                'العبوة ${fmtPack(pr.packSize(g.ing), g.ing)} بـ ${fmtMoney(pr.packPrice(g.ing))}'),
+                tx('العبوة ${fmtPack(pr.packSize(g.ing), g.ing)} بـ ${fmtMoney(pr.packPrice(g.ing))}', 'Pack ${fmtPack(pr.packSize(g.ing), g.ing)} for ${fmtMoney(pr.packPrice(g.ing))}')),
           ),
           ListTile(
             leading: const Icon(Icons.price_change_outlined),
-            title: const Text('عدّل السعر أو حجم العبوة'),
+            title: Text(tx('عدّل السعر أو حجم العبوة', 'Edit price or pack size')),
             onTap: () {
               Navigator.pop(ctx);
               editPriceDialog(context, g.ing);
@@ -226,8 +229,8 @@ class GroceryScreen extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.home_outlined),
-            title: const Text('موجود عندي في البيت'),
-            subtitle: const Text('ما ينحسب في المجموع، ويبقى كذا للأسابيع الجاية'),
+            title: Text(tx('موجود عندي في البيت', 'I have this at home')),
+            subtitle: Text(tx('ما ينحسب في المجموع، ويبقى كذا للأسابيع الجاية', 'Not counted in the total, and stays that way for the next weeks')),
             onTap: () {
               Navigator.pop(ctx);
               app.toggleHave(g.ing.id);
@@ -235,7 +238,7 @@ class GroceryScreen extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.restaurant_menu),
-            title: Text('يستخدم في: ${g.recipeIds.map((id) => app.c.recipeById[id]?.title ?? id).join('، ')}'),
+            title: Text(tx('يستخدم في: ${g.recipeIds.map((id) => app.c.recipeById[id]?.title ?? id).join('، ')}', 'Used in: ${g.recipeIds.map((id) => app.c.recipeById[id]?.title ?? id).join(', ')}')),
           ),
         ]),
       ),
@@ -250,28 +253,28 @@ class GroceryScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('أضف للقائمة'),
+        title: Text(tx('أضف للقائمة', 'Add to list')),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(
               controller: name,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'الاسم (مثلاً: مناديل)')),
+              decoration: InputDecoration(labelText: tx('الاسم (مثلاً: مناديل)', 'Name (e.g. tissues)'))),
           TextField(
               controller: note,
-              decoration: const InputDecoration(labelText: 'الكمية أو ملاحظة')),
+              decoration: InputDecoration(labelText: tx('الكمية أو ملاحظة', 'Quantity or note'))),
           TextField(
               controller: price,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                  labelText: 'السعر التقريبي (اختياري)', suffixText: 'ر.س')),
+              decoration: InputDecoration(
+                  labelText: tx('السعر التقريبي (اختياري)', 'Approx. price (optional)'), suffixText: tx('ر.س', 'SAR'))),
         ]),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(tx('إلغاء', 'Cancel'))),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('أضف')),
+              child: Text(tx('أضف', 'Add'))),
         ],
       ),
     );
@@ -282,7 +285,7 @@ class GroceryScreen extends StatelessWidget {
   }
 
   String _asText(AppState app, Map<String, List<GroceryLine>> byAisle) {
-    final b = StringBuffer('🛒 قائمة المشتريات\n');
+    final b = StringBuffer(tx('🛒 قائمة المشتريات\n', '🛒 Shopping list\n'));
     for (final a in app.c.aisles) {
       final l = byAisle[a.id];
       if (l == null) continue;
@@ -293,7 +296,7 @@ class GroceryScreen extends StatelessWidget {
       }
     }
     if (app.custom.isNotEmpty) {
-      b.writeln('\nأخرى:');
+      b.writeln(tx('\nأخرى:', '\nOther:'));
       for (final c in app.custom) {
         b.writeln('▫️ ${c.name}${c.note.isEmpty ? '' : ' — ${c.note}'}');
       }

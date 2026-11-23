@@ -1,3 +1,4 @@
+import 'i18n.dart';
 // Data models for سفرة.
 
 List<String> _strList(dynamic v) =>
@@ -7,29 +8,35 @@ double _d(dynamic v) => v == null ? 0 : (v as num).toDouble();
 
 class Named {
   final String id;
-  final String name;
-  const Named(this.id, this.name);
-  factory Named.fromJson(Map<String, dynamic> j) =>
-      Named(j['id'] as String, j['name'] as String);
+  final String nameAr;
+  final String nameEn;
+  const Named(this.id, this.nameAr, [this.nameEn = '']);
+  String get name => L.en && nameEn.isNotEmpty ? nameEn : nameAr;
+  factory Named.fromJson(Map<String, dynamic> j) => Named(j['id'] as String,
+      j['name'] as String, (j['nameEn'] as String?) ?? '');
 }
 
 class Store {
   final String id;
-  final String name;
+  final String nameAr;
+  final String nameEn;
   final double factor;
-  const Store(this.id, this.name, this.factor);
-  factory Store.fromJson(Map<String, dynamic> j) =>
-      Store(j['id'] as String, j['name'] as String, _d(j['factor']));
+  const Store(this.id, this.nameAr, this.nameEn, this.factor);
+  String get name => L.en && nameEn.isNotEmpty ? nameEn : nameAr;
+  factory Store.fromJson(Map<String, dynamic> j) => Store(j['id'] as String,
+      j['name'] as String, (j['nameEn'] as String?) ?? '', _d(j['factor']));
 }
 
 class Ingredient {
   final String id;
-  final String name;
+  final String nameAr;
+  final String nameEn;
   final String aisle;
   final String unit; // g | ml | pc
   final double pack;
   final double price;
-  final String? pcName;
+  final String? pcNameAr;
+  final String? pcNameEn;
   final double? pcWeight;
   final double density;
   final List<String> allergens;
@@ -40,12 +47,14 @@ class Ingredient {
 
   const Ingredient({
     required this.id,
-    required this.name,
+    required this.nameAr,
+    this.nameEn = '',
     required this.aisle,
     required this.unit,
     required this.pack,
     required this.price,
-    this.pcName,
+    this.pcNameAr,
+    this.pcNameEn,
     this.pcWeight,
     required this.density,
     required this.allergens,
@@ -56,15 +65,19 @@ class Ingredient {
   });
 
   bool get isSpice => aisle == 'spices' || id == 'salt';
+  String get name => L.en && nameEn.isNotEmpty ? nameEn : nameAr;
+  String? get pcName => L.en ? (pcNameEn ?? pcNameAr) : pcNameAr;
 
   factory Ingredient.fromJson(Map<String, dynamic> j) => Ingredient(
         id: j['id'] as String,
-        name: j['name'] as String,
+        nameAr: j['name'] as String,
+        nameEn: (j['nameEn'] as String?) ?? '',
         aisle: j['aisle'] as String,
         unit: j['unit'] as String,
         pack: _d(j['pack']),
         price: _d(j['price']),
-        pcName: j['pcName'] as String?,
+        pcNameAr: j['pcName'] as String?,
+        pcNameEn: j['pcNameEn'] as String?,
         pcWeight: j['pcWeight'] == null ? null : _d(j['pcWeight']),
         density: _d(j['density']),
         allergens: _strList(j['allergens']),
@@ -90,7 +103,8 @@ class RecipeLine {
 
 class Recipe {
   final String id;
-  final String title;
+  final String titleAr;
+  final String titleEn;
   final String emoji;
   final List<String> meals;
   final List<String> styles;
@@ -109,11 +123,16 @@ class Recipe {
   final bool fried;
   final List<String> diets;
   final List<String> vibes;
+  final List<String> course; // soup salad drink dessert (as a side)
   final bool user; // made by the user or by AI
+
+  String get title => L.en && titleEn.isNotEmpty ? titleEn : titleAr;
+  bool get isSideOnly => meals.isEmpty;
 
   const Recipe({
     required this.id,
-    required this.title,
+    required this.titleAr,
+    this.titleEn = '',
     required this.emoji,
     required this.meals,
     required this.styles,
@@ -132,6 +151,7 @@ class Recipe {
     this.fried = false,
     this.diets = const [],
     this.vibes = const [],
+    this.course = const [],
     this.user = false,
   });
 
@@ -139,7 +159,8 @@ class Recipe {
     final n = (j['nutrition'] as Map).cast<String, dynamic>();
     return Recipe(
       id: j['id'] as String,
-      title: j['title'] as String,
+      titleAr: j['title'] as String,
+      titleEn: (j['titleEn'] as String?) ?? '',
       emoji: j['emoji'] as String,
       meals: _strList(j['meals']),
       styles: _strList(j['styles']),
@@ -160,13 +181,15 @@ class Recipe {
       fried: j['fried'] == true,
       diets: _strList(j['diets']),
       vibes: _strList(j['vibes']),
+      course: _strList(j['course']),
       user: j['user'] == true,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'title': title,
+        'title': titleAr,
+        'titleEn': titleEn,
         'emoji': emoji,
         'meals': meals,
         'styles': styles,
@@ -187,6 +210,7 @@ class Recipe {
         'fried': fried,
         'diets': diets,
         'vibes': vibes,
+        'course': course,
         'user': user,
       };
 }
@@ -265,6 +289,7 @@ class Prefs {
   Set<String> appliances;
   Set<String> fridge; // ingredients already at home
   bool leftovers; // cook once, eat two days
+  Map<String, Set<String>> sides; // slot -> soup salad drink dessert
   bool kcalTarget;
   int kcal; // per person per day
   int protein;
@@ -284,6 +309,7 @@ class Prefs {
     Set<String>? appliances,
     Set<String>? fridge,
     this.leftovers = true,
+    Map<String, Set<String>>? sides,
     this.kcalTarget = false,
     this.kcal = 2000,
     this.protein = 120,
@@ -296,7 +322,8 @@ class Prefs {
         allergies = allergies ?? <String>{},
         dislikes = dislikes ?? <String>{},
         appliances = appliances ?? {'oven'},
-        fridge = fridge ?? <String>{};
+        fridge = fridge ?? <String>{},
+        sides = sides ?? <String, Set<String>>{};
 
   Prefs copy() => Prefs.fromJson(toJson());
 
@@ -313,6 +340,7 @@ class Prefs {
         'appliances': appliances.toList(),
         'fridge': fridge.toList(),
         'leftovers': leftovers,
+        'sides': sides.map((k, v) => MapEntry(k, v.toList())),
         'kcalTarget': kcalTarget,
         'kcal': kcal,
         'protein': protein,
@@ -340,6 +368,8 @@ class Prefs {
       appliances: _strList(j['appliances']).toSet(),
       fridge: _strList(j['fridge']).toSet(),
       leftovers: j['leftovers'] != false,
+      sides: ((j['sides'] as Map?) ?? {}).map((k, v) =>
+          MapEntry(k.toString(), _strList(v).toSet())),
       kcalTarget: j['kcalTarget'] == true,
       kcal: i('kcal', 2000),
       protein: i('protein', 120),
@@ -356,6 +386,7 @@ class PlannedMeal {
   int servings;
   bool locked;
   bool leftover; // eaten from yesterday's pot, nothing to cook or buy
+  List<String> sides; // soup / salad / drink / dessert recipe ids
 
   PlannedMeal({
     required this.day,
@@ -364,7 +395,8 @@ class PlannedMeal {
     required this.servings,
     this.locked = false,
     this.leftover = false,
-  });
+    List<String>? sides,
+  }) : sides = sides ?? <String>[];
 
   PlannedMeal copy() => PlannedMeal(
       day: day,
@@ -372,7 +404,8 @@ class PlannedMeal {
       recipeId: recipeId,
       servings: servings,
       locked: locked,
-      leftover: leftover);
+      leftover: leftover,
+      sides: [...sides]);
 
   Map<String, dynamic> toJson() => {
         'day': day,
@@ -381,6 +414,7 @@ class PlannedMeal {
         'servings': servings,
         'locked': locked,
         'leftover': leftover,
+        'sides': sides,
       };
 
   factory PlannedMeal.fromJson(Map<String, dynamic> j) => PlannedMeal(
@@ -390,6 +424,7 @@ class PlannedMeal {
         servings: (j['servings'] as num).toInt(),
         locked: j['locked'] == true,
         leftover: j['leftover'] == true,
+        sides: _strList(j['sides']),
       );
 }
 
@@ -429,18 +464,18 @@ class Option {
   const Option(this.id, this.emoji, this.title, [this.sub = '']);
 }
 
-const slotNames = {'b': 'الفطور', 'l': 'الغداء', 'd': 'العشاء'};
+Map<String, String> get slotNames => {'b': tx('الفطور', 'Breakfast'), 'l': tx('الغداء', 'Lunch'), 'd': tx('العشاء', 'Dinner')};
 const slotOrder = ['b', 'l', 'd'];
 
-const dietOptions = [
-  Option('vegetarian', '🥦', 'نباتي', 'بدون لحوم ولا سمك'),
-  Option('vegan', '🌱', 'نباتي صرف', 'بدون أي منتج حيواني'),
-  Option('pescatarian', '🐟', 'سمك بدون لحوم', 'سمك وبحريات، بدون لحوم'),
-  Option('keto', '🔥', 'كيتو', 'كارب قليل جداً'),
-  Option('high_protein', '💪', 'بروتين عالي', 'وجبات غنية بالبروتين'),
-  Option('glp1', '🎯', 'حصص خفيفة', 'سعرات أقل وبروتين كويس'),
-  Option('anti_inflammatory', '💧', 'مضاد للالتهاب', 'أكل طبيعي بدون مقلي ولا مصنّع'),
-  Option('mediterranean', '🫒', 'متوسطي', 'خضار وسمك وزيت زيتون'),
+List<Option> get dietOptions => [
+  Option('vegetarian', '🥦', tx('نباتي', 'Vegetarian'), tx('بدون لحوم ولا سمك', 'No meat or fish')),
+  Option('vegan', '🌱', tx('نباتي صرف', 'Vegan'), tx('بدون أي منتج حيواني', 'Plants only')),
+  Option('pescatarian', '🐟', tx('سمك بدون لحوم', 'Pescatarian'), tx('سمك وبحريات، بدون لحوم', 'Fish and seafood, no meat')),
+  Option('keto', '🔥', tx('كيتو', 'Keto'), tx('كارب قليل جداً', 'Very low carb')),
+  Option('high_protein', '💪', tx('بروتين عالي', 'High protein'), tx('وجبات غنية بالبروتين', 'Protein-forward meals')),
+  Option('glp1', '🎯', tx('حصص خفيفة', 'Lighter portions'), tx('سعرات أقل وبروتين كويس', 'Fewer calories, good protein')),
+  Option('anti_inflammatory', '💧', tx('مضاد للالتهاب', 'Anti-inflammatory'), tx('أكل طبيعي بدون مقلي ولا مصنّع', 'Whole foods, nothing fried or processed')),
+  Option('mediterranean', '🫒', tx('متوسطي', 'Mediterranean'), tx('خضار وسمك وزيت زيتون', 'Veg, fish and olive oil')),
 ];
 const hardDiets = {'vegetarian', 'vegan', 'pescatarian'};
 
@@ -455,60 +490,67 @@ const styleEmoji = {
   'healthy': '🥗',
   'western': '🍔',
 };
-const styleSub = {
-  'saudi': 'كبسة، مندي، جريش',
-  'egyptian': 'محاشي، كشري، مكرونات',
-  'levant': 'مقلوبة، فتة، شاورما',
-  'italian': 'باستا، طماطم، أعشاب',
-  'asian': 'كاري، نودلز، صويا',
-  'indian': 'برياني، كاري، عدس',
-  'mexican': 'تاكو، فاهيتا، فاصوليا',
-  'healthy': 'خفيف ومتوازن',
-  'western': 'برجر، مشويات، شوربات',
+Map<String, String> get styleSub => {
+  'saudi': tx('كبسة، مندي، جريش', 'Kabsa, mandi, jareesh'),
+  'egyptian': tx('محاشي، كشري، مكرونات', 'Mahshi, koshari, pasta'),
+  'levant': tx('مقلوبة، فتة، شاورما', 'Maqluba, fatteh, shawarma'),
+  'italian': tx('باستا، طماطم، أعشاب', 'Pasta, tomato, herbs'),
+  'asian': tx('كاري، نودلز، صويا', 'Curry, noodles, soy'),
+  'indian': tx('برياني، كاري، عدس', 'Biryani, curry, lentils'),
+  'mexican': tx('تاكو، فاهيتا، فاصوليا', 'Tacos, fajitas, beans'),
+  'healthy': tx('خفيف ومتوازن', 'Light and balanced'),
+  'western': tx('برجر، مشويات، شوربات', 'Burgers, roasts, soups'),
 };
 
-const vibeOptions = [
-  Option('quick', '⚡', 'سريع وسهل', 'جاهز في حوالي 20 دقيقة'),
-  Option('one_pan', '🍳', 'طاسة واحدة', 'مواعين أقل'),
-  Option('batch', '🍲', 'اطبخ مرة وكُل مرتين', 'طبخة تكفي يومين'),
-  Option('family', '👨‍👩‍👧', 'مفضلة العيلة', 'أكلات يحبها الكل'),
-  Option('comfort', '🥘', 'أكل البيت', 'الأكلات الدسمة المعروفة'),
-  Option('fresh', '🥬', 'طازج وخفيف', 'خضار أكثر وأخف'),
-  Option('fiber', '🌾', 'ألياف عالية', 'بقوليات وحبوب وخضار'),
-  Option('takeout', '🍔', 'أكل مطاعم بالبيت', 'زي المطاعم بأقل تكلفة'),
+List<Option> get vibeOptions => [
+  Option('quick', '⚡', tx('سريع وسهل', 'Quick & easy'), tx('جاهز في حوالي 20 دقيقة', 'Ready in about 20 minutes')),
+  Option('one_pan', '🍳', tx('طاسة واحدة', 'One pan'), tx('مواعين أقل', 'Fewer dishes')),
+  Option('batch', '🍲', tx('اطبخ مرة وكُل مرتين', 'Batch cook'), tx('طبخة تكفي يومين', 'Cook once, eat twice')),
+  Option('family', '👨‍👩‍👧', tx('مفضلة العيلة', 'Family favorites'), tx('أكلات يحبها الكل', 'Meals everyone loves')),
+  Option('comfort', '🥘', tx('أكل البيت', 'Comfort classics'), tx('الأكلات الدسمة المعروفة', 'The hearty standards')),
+  Option('fresh', '🥬', tx('طازج وخفيف', 'Fresh & light'), tx('خضار أكثر وأخف', 'More veg, lighter')),
+  Option('fiber', '🌾', tx('ألياف عالية', 'Fiber-forward'), tx('بقوليات وحبوب وخضار', 'Beans, grains, greens')),
+  Option('takeout', '🍔', tx('أكل مطاعم بالبيت', 'Takeout at home'), tx('زي المطاعم بأقل تكلفة', 'Like takeout, for less')),
 ];
 
-const allergyOptions = [
-  Option('gluten', '🌾', 'القمح والجلوتين'),
-  Option('dairy', '🥛', 'الحليب ومشتقاته'),
-  Option('eggs', '🥚', 'البيض'),
-  Option('nuts', '🥜', 'المكسرات'),
-  Option('fish', '🐟', 'السمك'),
-  Option('shellfish', '🦐', 'الجمبري والقشريات'),
-  Option('sesame', '⚪', 'السمسم'),
-  Option('soy', '🫘', 'الصويا'),
+List<Option> get allergyOptions => [
+  Option('gluten', '🌾', tx('القمح والجلوتين', 'Wheat & gluten')),
+  Option('dairy', '🥛', tx('الحليب ومشتقاته', 'Milk & dairy')),
+  Option('eggs', '🥚', tx('البيض', 'Eggs')),
+  Option('nuts', '🥜', tx('المكسرات', 'Nuts')),
+  Option('fish', '🐟', tx('السمك', 'Fish')),
+  Option('shellfish', '🦐', tx('الجمبري والقشريات', 'Shrimp & shellfish')),
+  Option('sesame', '⚪', tx('السمسم', 'Sesame')),
+  Option('soy', '🫘', tx('الصويا', 'Soy')),
 ];
 
-const dislikeOptions = [
-  Option('fish', '🐟', 'السمك'),
-  Option('seafood', '🦐', 'المأكولات البحرية'),
-  Option('lamb', '🐑', 'لحم الغنم'),
-  Option('beef', '🐄', 'اللحم البقري'),
-  Option('liver', '🫀', 'الكبدة'),
-  Option('mushroom', '🍄', 'المشروم'),
-  Option('eggplant', '🍆', 'الباذنجان'),
-  Option('okra', '🌱', 'البامية'),
-  Option('coriander', '🌿', 'الكزبرة'),
-  Option('spicy', '🌶️', 'الأكل الحار'),
+List<Option> get dislikeOptions => [
+  Option('fish', '🐟', tx('السمك', 'Fish')),
+  Option('seafood', '🦐', tx('المأكولات البحرية', 'Seafood')),
+  Option('lamb', '🐑', tx('لحم الغنم', 'Lamb')),
+  Option('beef', '🐄', tx('اللحم البقري', 'Beef')),
+  Option('liver', '🫀', tx('الكبدة', 'Liver')),
+  Option('mushroom', '🍄', tx('المشروم', 'Mushrooms')),
+  Option('eggplant', '🍆', tx('الباذنجان', 'Eggplant')),
+  Option('okra', '🌱', tx('البامية', 'Okra')),
+  Option('coriander', '🌿', tx('الكزبرة', 'Coriander')),
+  Option('spicy', '🌶️', tx('الأكل الحار', 'Spicy food')),
 ];
 
-const applianceOptions = [
-  Option('oven', '🔥', 'الفرن'),
-  Option('air_fryer', '🍟', 'القلاية الهوائية'),
-  Option('microwave', '📡', 'المايكرويف'),
-  Option('blender', '🌀', 'الخلاط'),
-  Option('pressure_cooker', '♨️', 'حلة الضغط'),
+List<Option> get applianceOptions => [
+  Option('oven', '🔥', tx('الفرن', 'Oven')),
+  Option('air_fryer', '🍟', tx('القلاية الهوائية', 'Air fryer')),
+  Option('microwave', '📡', tx('المايكرويف', 'Microwave')),
+  Option('blender', '🌀', tx('الخلاط', 'Blender')),
+  Option('pressure_cooker', '♨️', tx('حلة الضغط', 'Pressure cooker')),
 ];
+
+List<Option> get sideOptions => [
+      Option('soup', '🥣', tx('شوربة', 'Soup')),
+      Option('salad', '🥗', tx('سلطة', 'Salad')),
+      Option('drink', '🥤', tx('مشروب', 'Drink')),
+      Option('dessert', '🍰', tx('تحلية', 'Dessert')),
+    ];
 
 String optionTitle(List<Option> list, String id) =>
     list.firstWhere((o) => o.id == id, orElse: () => Option(id, '', id)).title;

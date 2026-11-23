@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../cooking_guide.dart';
 import '../engine.dart';
 import '../models.dart';
+import '../notify.dart';
 import '../state.dart';
 import 'anim.dart';
 import 'theme.dart';
@@ -22,14 +24,33 @@ class RecipeScreen extends StatefulWidget {
 
 class _RecipeScreenState extends State<RecipeScreen> {
   int? _servings;
+  bool translating = false;
+
+  Future<void> _translate() async {
+    final app = AppScope.read(context);
+    final g = app.gemini;
+    if (g == null) return;
+    setState(() => translating = true);
+    try {
+      final steps = await g.translateSteps(widget.recipe);
+      app.saveStepsEn(widget.recipe.id, steps);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => translating = false);
+    }
+  }
 
   Future<void> _youtube(Recipe r) async {
     final uri = Uri.https('www.youtube.com', '/results',
-        {'search_query': 'طريقة عمل ${r.title}'});
+        {'search_query': tx('طريقة عمل ${r.title}', 'how to make ${r.title}')});
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ما قدرنا نفتح يوتيوب')));
+          SnackBar(content: Text(tx('ما قدرنا نفتح يوتيوب', 'Could not open YouTube'))));
     }
   }
 
@@ -67,7 +88,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
         dense: true,
         leading: Text(ing.emoji, style: const TextStyle(fontSize: 22)),
         title: Text(ing.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(ok ? '✓ موجود عندك' : 'ناقص، بيكون في قائمة المشتريات',
+        subtitle: Text(ok ? tx('✓ موجود عندك', '✓ You have it') : tx('ناقص، بيكون في قائمة المشتريات', 'Missing, it will be on the shopping list'),
             style: TextStyle(
                 fontSize: 11.5, color: ok ? Brand.green : Brand.orange)),
         trailing: Text(fmtQty(l.q * factor, l.u, ing),
@@ -83,14 +104,14 @@ class _RecipeScreenState extends State<RecipeScreen> {
               onPressed: () {
                 app.saveRecipe(r);
                 ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('انحفظت في وصفاتي')));
+                    SnackBar(content: Text(tx('انحفظت في وصفاتي', 'Saved to My recipes'))));
               },
               icon: const Icon(Icons.bookmark_add_outlined),
-              label: const Text('احفظ'),
+              label: Text(tx('احفظ', 'Save')),
             ),
           if (widget.planned == null)
             IconButton(
-              tooltip: 'أضف للخطة',
+              tooltip: tx('أضف للخطة', 'Add to plan'),
               icon: const Icon(Icons.playlist_add),
               onPressed: () => addToPlanDialog(context, r, servings),
             ),
@@ -102,10 +123,10 @@ class _RecipeScreenState extends State<RecipeScreen> {
           if (widget.planned?.leftover ?? false)
             Card(
               color: Brand.yellow.withValues(alpha: 0.2),
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.all(12),
                 child: Text(
-                    '🍱 هذي بواقي من طبخة أمس، ما تحتاج تطبخ. سخّنها كويس لحد ما تطلع بخار قبل الأكل.'),
+                    tx('🍱 هذي بواقي من طبخة أمس، ما تحتاج تطبخ. سخّنها كويس لحد ما تطلع بخار قبل الأكل.', '🍱 These are leftovers from yesterday, no cooking needed. Reheat until steaming before eating.')),
               ),
             ),
           const SizedBox(height: 8),
@@ -125,15 +146,35 @@ class _RecipeScreenState extends State<RecipeScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              InfoPill(Icons.timer_outlined, '${r.minutes} دقيقة'),
-              InfoPill(Icons.payments_outlined, '${fmtMoney(cps)} للحصة'),
+              InfoPill(Icons.timer_outlined, tx('${r.minutes} دقيقة', '${r.minutes} min')),
+              InfoPill(Icons.payments_outlined, tx('${fmtMoney(cps)} للحصة', '${fmtMoney(cps)} per serving')),
               for (final s in r.styles.take(2))
                 InfoPill(Icons.public, app.c.styleName(s)),
               for (final a in r.appliances)
                 InfoPill(Icons.kitchen_outlined, optionTitle(applianceOptions, a)),
-              if (r.keeps) const InfoPill(Icons.ac_unit, 'تصلح تبات'),
+              if (r.keeps) InfoPill(Icons.ac_unit, tx('تصلح تبات', 'Keeps well')),
             ],
           ),
+          if (widget.planned != null && !widget.planned!.leftover)
+            Builder(builder: (_) {
+              final m = widget.planned!;
+              final ready = app.mealTime(m.day, m.slot);
+              final start = ready.subtract(Duration(minutes: r.minutes + 10));
+              String t(DateTime d) => hhmm(d.hour * 60 + d.minute);
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Card(
+                  color: Brand.yellow.withValues(alpha: 0.18),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                        tx('⏰ ابدأ الساعة ${t(start)} عشان تجهز ${t(ready)} (${r.minutes} دقيقة + 10 دقائق تجهيز). تقدر تغيّر مواعيد الوجبات من الإعدادات ← التنبيهات.',
+                            '⏰ Start at ${t(start)} to be ready at ${t(ready)} (${r.minutes} min + 10 min prep). Change meal times in Settings → Reminders.'),
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              );
+            }),
           const SizedBox(height: 14),
           Card(
             child: Padding(
@@ -141,7 +182,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('القيمة الغذائية للحصة الواحدة (تقريبية)',
+                  Text(tx('القيمة الغذائية للحصة الواحدة (تقريبية)', 'Nutrition per serving (approx.)'),
                       style: TextStyle(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 6),
                   MacroRow.of(r, compact: false),
@@ -156,7 +197,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
               child: Row(children: [
                 const Icon(Icons.people_outline),
                 const SizedBox(width: 8),
-                const Text('عدد الحصص'),
+                Text(tx('عدد الحصص', 'Servings')),
                 const Spacer(),
                 IconButton(
                     onPressed: () => setServings(servings - 1),
@@ -171,11 +212,11 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
           ),
           SectionTitle(missing == 0
-              ? 'المكونات (كلها موجودة عندك ✓)'
-              : 'المكونات (ناقصك $missing)'),
+              ? tx('المكونات (كلها موجودة عندك ✓)', 'Ingredients (you have them all ✓)')
+              : tx('المكونات (ناقصك $missing)', 'Ingredients ($missing missing)')),
           Card(child: Column(children: [for (final x in main) ingRow(x)])),
           if (spices.isNotEmpty) ...[
-            const SectionTitle('🧂 البهارات والأساسيات المطلوبة'),
+            SectionTitle(tx('🧂 البهارات والأساسيات المطلوبة', '🧂 Spices & basics needed')),
             Card(child: Column(children: [for (final x in spices) ingRow(x)])),
           ],
           const SizedBox(height: 8),
@@ -184,7 +225,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
               child: OutlinedButton.icon(
                 onPressed: () => _youtube(r),
                 icon: const Icon(Icons.play_circle_fill, color: Colors.red),
-                label: const Text('شاهد الطريقة'),
+                label: Text(tx('شاهد الطريقة', 'Watch how')),
               ),
             ),
             const SizedBox(width: 8),
@@ -192,18 +233,43 @@ class _RecipeScreenState extends State<RecipeScreen> {
               child: OutlinedButton.icon(
                 onPressed: () => showKitchenBasics(context),
                 icon: const Icon(Icons.school_outlined),
-                label: const Text('أساسيات الطبخ'),
+                label: Text(tx('أساسيات الطبخ', 'Cooking basics')),
               ),
             ),
           ]),
-          const SectionTitle('👩‍🍳 طريقة التحضير خطوة بخطوة'),
+          SectionTitle(tx('👩‍🍳 طريقة التحضير خطوة بخطوة', '👩‍🍳 Step-by-step method')),
+          if (L.en && r.steps.any(_isArabic) && app.stepsEn[r.id] == null)
+            Card(
+              color: Brand.yellow.withValues(alpha: 0.15),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                        'The steps of this recipe are written in Arabic. AI can translate them for you (needs a Gemini key).'),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: translating || app.gemini == null ? null : _translate,
+                      icon: translating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.translate),
+                      label: const Text('Translate steps to English'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           for (var i = 0; i < r.steps.length; i++)
             FadeSlideIn(
               index: i,
               child: StepCard(
                 recipe: r,
                 index: i,
-                text: renderStep(r.steps[i], r, factor, app.c),
+                text: renderStep(localStep(app, r, i), r, factor, app.c),
                 raw: r.steps[i],
               ),
             ),
@@ -217,7 +283,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             MaterialPageRoute(
                 builder: (_) => CookMode(recipe: r, factor: factor))),
         icon: const Icon(Icons.soup_kitchen),
-        label: const Text('ابدأ الطبخ'),
+        label: Text(tx('ابدأ الطبخ', 'Start cooking')),
       ),
     );
   }
@@ -246,8 +312,8 @@ class _StepCardState extends State<StepCard> {
   Future<void> _explain() async {
     final g = AppScope.read(context).gemini;
     if (g == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('أضف مفتاح Gemini من الإعدادات ← الذكاء الاصطناعي')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tx('أضف مفتاح Gemini من الإعدادات ← الذكاء الاصطناعي', 'Add a Gemini key in Settings → AI'))));
       return;
     }
     setState(() => busy = true);
@@ -313,12 +379,12 @@ class _StepCardState extends State<StepCard> {
                           if (heat.isNotEmpty)
                             Chip(
                               visualDensity: VisualDensity.compact,
-                              label: Text('🔥 النار: $heat'),
+                              label: Text(tx('🔥 النار: $heat', '🔥 Heat: $heat')),
                             ),
                           if (stepMinutes(widget.raw) != null)
                             Chip(
                               visualDensity: VisualDensity.compact,
-                              label: Text('⏱️ ${stepMinutes(widget.raw)} دقيقة'),
+                              label: Text(tx('⏱️ ${stepMinutes(widget.raw)} دقيقة', '⏱️ ${stepMinutes(widget.raw)} min')),
                             ),
                         ]),
                       ),
@@ -332,7 +398,7 @@ class _StepCardState extends State<StepCard> {
                     .copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   tilePadding: EdgeInsets.zero,
-                  title: Text('💡 شرح للمبتدئ',
+                  title: Text(tx('💡 شرح للمبتدئ', '💡 Beginner tips'),
                       style: TextStyle(
                           color: Brand.orange, fontWeight: FontWeight.w700)),
                   children: [
@@ -369,7 +435,7 @@ class _StepCardState extends State<StepCard> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.auto_awesome, size: 18),
-                label: Text(ai == null ? 'اشرح لي أكثر بالذكاء الاصطناعي' : 'اشرح مرة ثانية'),
+                label: Text(ai == null ? tx('اشرح لي أكثر بالذكاء الاصطناعي', 'Explain more with AI') : tx('اشرح مرة ثانية', 'Explain again')),
               ),
             ),
             if (ai != null)
@@ -401,7 +467,7 @@ void showKitchenBasics(BuildContext context) {
         controller: ctrl,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
-          const Text('أساسيات الطبخ للمبتدئين',
+          Text(tx('أساسيات الطبخ للمبتدئين', 'Cooking basics for beginners'),
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 12),
           for (final (e, t, d) in kitchenBasics)
@@ -411,7 +477,7 @@ void showKitchenBasics(BuildContext context) {
               title: Text(t, style: const TextStyle(fontWeight: FontWeight.w800)),
               subtitle: Text(d, style: const TextStyle(height: 1.5)),
             ),
-          const SectionTitle('المصطلحات'),
+          SectionTitle(tx('المصطلحات', 'Terms')),
           for (final t in techniques.take(14))
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -435,11 +501,11 @@ Future<void> addToPlanDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setD) => AlertDialog(
-        title: const Text('أضف للخطة'),
+        title: Text(tx('أضف للخطة', 'Add to plan')),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           DropdownButtonFormField<int>(
             initialValue: day,
-            decoration: const InputDecoration(labelText: 'اليوم'),
+            decoration: InputDecoration(labelText: tx('اليوم', 'Day')),
             items: [
               for (var i = 0; i < 7; i++)
                 DropdownMenuItem(
@@ -452,7 +518,7 @@ Future<void> addToPlanDialog(
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: slot,
-            decoration: const InputDecoration(labelText: 'الوجبة'),
+            decoration: InputDecoration(labelText: tx('الوجبة', 'Meal')),
             items: [
               for (final s in slotOrder)
                 DropdownMenuItem(value: s, child: Text(slotNames[s]!)),
@@ -460,16 +526,16 @@ Future<void> addToPlanDialog(
             onChanged: (v) => setD(() => slot = v ?? slot),
           ),
           const SizedBox(height: 8),
-          const Text('إذا كان فيه وجبة في نفس الخانة بنستبدلها.',
+          Text(tx('إذا كان فيه وجبة في نفس الخانة بنستبدلها.', 'If there is a meal in that slot it will be replaced.'),
               style: TextStyle(fontSize: 12)),
         ]),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(tx('إلغاء', 'Cancel'))),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('أضف')),
+              child: Text(tx('أضف', 'Add'))),
         ],
       ),
     ),
@@ -480,7 +546,7 @@ Future<void> addToPlanDialog(
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
-              'أُضيفت إلى ${slotNames[slot]} يوم ${dayName(app.dayDate(day))}')));
+              tx('أُضيفت إلى ${slotNames[slot]} يوم ${dayName(app.dayDate(day))}', 'Added to ${slotNames[slot]} on ${dayName(app.dayDate(day))}'))));
     }
   }
 }
@@ -510,6 +576,9 @@ class _CookModeState extends State<CookMode> {
 
   void _startTimer(int minutes) {
     timer?.cancel();
+    // Also ring as a notification, in case you leave the app.
+    Notifier.cancelTimer(page);
+    Notifier.timer(page, minutes, widget.recipe.title);
     setState(() => remaining = minutes * 60);
     timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
@@ -519,7 +588,7 @@ class _CookModeState extends State<CookMode> {
         HapticFeedback.heavyImpact();
         SystemSound.play(SystemSoundType.alert);
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('⏰ انتهى الوقت!')));
+            SnackBar(content: Text(tx('⏰ انتهى الوقت!', '⏰ Time’s up!'))));
       }
     });
   }
@@ -534,7 +603,7 @@ class _CookModeState extends State<CookMode> {
     final n = r.steps.length;
     return Scaffold(
       appBar: AppBar(
-        title: Text('الخطوة ${page + 1} من $n'),
+        title: Text(tx('الخطوة ${page + 1} من $n', 'Step ${page + 1} of $n')),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(8),
           child: Padding(
@@ -548,7 +617,7 @@ class _CookModeState extends State<CookMode> {
         itemCount: n,
         onPageChanged: (i) => setState(() => page = i),
         itemBuilder: (_, i) {
-          final text = renderStep(r.steps[i], r, widget.factor, app.c);
+          final text = renderStep(localStep(app, r, i), r, widget.factor, app.c);
           final mins = stepMinutes(r.steps[i]);
           final techs = techniquesFor(r.steps[i]);
           return ListView(
@@ -587,7 +656,7 @@ class _CookModeState extends State<CookMode> {
                       : FilledButton.tonalIcon(
                           onPressed: () => _startTimer(mins),
                           icon: const Icon(Icons.timer),
-                          label: Text('مؤقت $mins دقيقة'),
+                          label: Text(tx('مؤقت $mins دقيقة', 'Timer $mins min')),
                         ),
                 ),
               for (final t in techs)
@@ -617,7 +686,7 @@ class _CookModeState extends State<CookMode> {
                     : () => ctrl.previousPage(
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOut),
-                child: const Text('السابق'),
+                child: Text(tx('السابق', 'Back')),
               ),
             ),
             const SizedBox(width: 12),
@@ -630,7 +699,7 @@ class _CookModeState extends State<CookMode> {
                     : () => ctrl.nextPage(
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOut),
-                child: Text(page == n - 1 ? 'بالعافية 🎉' : 'التالي'),
+                child: Text(page == n - 1 ? tx('بالعافية 🎉', 'Enjoy 🎉') : tx('التالي', 'Next')),
               ),
             ),
           ]),
@@ -638,4 +707,14 @@ class _CookModeState extends State<CookMode> {
       ),
     );
   }
+}
+
+bool _isArabic(String s) => RegExp(r'[\u0600-\u06FF]').hasMatch(
+    s.replaceAll(RegExp(r'\{\w+\}'), ''));
+
+/// The step in the UI language when a translation exists.
+String localStep(AppState app, Recipe r, int i) {
+  if (!L.en) return r.steps[i];
+  final en = app.stepsEn[r.id];
+  return en != null && i < en.length ? en[i] : r.steps[i];
 }

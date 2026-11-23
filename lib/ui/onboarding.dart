@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../models.dart';
@@ -46,6 +47,108 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    if (!app.langChosen) return _language(app);
+    return PopScope(
+      canPop: step == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: _switcher(),
+    );
+  }
+
+  Widget _language(AppState app) {
+    Widget card(String code, String flag, String title, String sub) {
+      final sel = app.lang == code;
+      return Pressable(
+        onTap: () => app.setLangDraft(code),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+                color: sel ? Brand.green : Colors.black12, width: sel ? 2.5 : 1),
+          ),
+          child: Row(children: [
+            Text(flag, style: const TextStyle(fontSize: 34)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.w900)),
+                  Text(sub),
+                ],
+              ),
+            ),
+            if (sel) Icon(Icons.check_circle, color: Brand.green),
+          ]),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const SizedBox(height: 20),
+            const Center(child: Bounce(child: Text('🌍', style: TextStyle(fontSize: 72)))),
+            const SizedBox(height: 16),
+            const Text('اللغة · Language',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 24),
+            card('ar', '🇸🇦', 'العربية', 'واجهة التطبيق بالعربي'),
+            const SizedBox(height: 12),
+            card('en', '🇬🇧', 'English', 'App in English'),
+            const SizedBox(height: 28),
+            Text(tx('المظهر', 'Appearance'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(
+                    value: 'system',
+                    icon: const Icon(Icons.brightness_auto),
+                    label: Text(tx('حسب الجوال', 'Phone setting'))),
+                ButtonSegment(
+                    value: 'light',
+                    icon: const Icon(Icons.light_mode),
+                    label: Text(tx('فاتح', 'Light'))),
+                ButtonSegment(
+                    value: 'dark',
+                    icon: const Icon(Icons.dark_mode),
+                    label: Text(tx('داكن', 'Dark'))),
+              ],
+              selected: {app.themeMode},
+              onSelectionChanged: (s) => app.setThemeMode(s.first),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ColorsPage())),
+              icon: const Icon(Icons.palette_outlined),
+              label: Text(tx('ألوان التطبيق', 'App colors')),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+              onPressed: () => app.setLang(app.lang),
+              child: Text(tx('متابعة', 'Continue')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _switcher() {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 350),
       transitionBuilder: (child, a) => FadeTransition(
@@ -68,6 +171,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _section(PrefSection sec) {
     final t = prefTitles[sec]!;
     final optional = const {
+      PrefSection.sides,
       PrefSection.cuisine,
       PrefSection.vibe,
       PrefSection.allergies,
@@ -112,8 +216,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
             onPressed: _next,
             child: Text(step == sections.length
-                ? 'اصنع خطتي ✨'
-                : (optional ? 'التالي (أو تخطَّ)' : 'التالي')),
+                ? tx('اصنع خطتي ✨', 'Make my plan ✨')
+                : (optional ? tx('التالي (أو تخطَّ)', 'Next (or skip)') : tx('التالي', 'Next'))),
           ),
         ),
       ),
@@ -121,11 +225,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _welcome() {
-    const bullets = [
-      ('💰', 'خطة أسبوعية حسب ميزانيتك'),
-      ('🧊', 'تستخدم الموجود في ثلاجتك'),
-      ('👩‍🍳', 'شرح طبخ للمبتدئين خطوة بخطوة'),
-      ('✨', 'وصفات بالذكاء الاصطناعي من مكوناتك'),
+    final bullets = [
+      ('💰', tx('خطة أسبوعية حسب ميزانيتك', 'A weekly plan within your budget')),
+      ('🧊', tx('تستخدم الموجود في ثلاجتك', 'Uses what is in your fridge')),
+      ('👩‍🍳', tx('شرح طبخ للمبتدئين خطوة بخطوة', 'Step-by-step cooking for beginners')),
+      ('✨', tx('وصفات بالذكاء الاصطناعي من مكوناتك', 'AI recipes from your ingredients')),
     ];
     return Scaffold(
       body: Container(
@@ -142,25 +246,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     onPressed: () => Navigator.push(context,
                         MaterialPageRoute(builder: (_) => const ColorsPage())),
                     icon: const Icon(Icons.palette_outlined),
-                    label: const Text('الألوان'),
+                    label: Text(tx('الألوان', 'Colors')),
                   ),
                 ),
                 const Spacer(),
                 const Bounce(
                     child: Text('🍽️', style: TextStyle(fontSize: 96))),
                 const SizedBox(height: 12),
-                const FadeSlideIn(
-                  child: Text('سفرة',
+                FadeSlideIn(
+                  child: Text(tx('سفرة', 'Sufra'),
                       style: TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.w900,
                           color: Colors.white)),
                 ),
                 const SizedBox(height: 10),
-                const FadeSlideIn(
+                FadeSlideIn(
                   index: 1,
                   child: Text(
-                    'حدد ميزانيتك والموجود عندك، ونطلع لك أسبوع وجبات كامل\nمع قائمة مشتريات وطريقة طبخ خطوة بخطوة.',
+                    tx('حدد ميزانيتك والموجود عندك، ونطلع لك أسبوع وجبات كامل\nمع قائمة مشتريات وطريقة طبخ خطوة بخطوة.', 'Set your budget and what you have, and get a full week of meals\nwith a shopping list and step-by-step cooking.'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         fontSize: 16, color: Colors.white, height: 1.5),
@@ -192,7 +296,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       foregroundColor: Brand.greenDark,
                       minimumSize: const Size.fromHeight(56)),
                   onPressed: _next,
-                  child: const Text('ابدأ'),
+                  child: Text(tx('ابدأ', 'Start')),
                 ),
               ],
             ),
@@ -209,12 +313,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       appBar: AppBar(
         leading: IconButton(
             onPressed: _back, icon: const Icon(Icons.arrow_back_rounded)),
-        title: const Text('خطتك جاهزة 🎉'),
+        title: Text(tx('خطتك جاهزة 🎉', 'Your plan is ready 🎉')),
         actions: [
           TextButton.icon(
             onPressed: () => app.generate(),
             icon: const Icon(Icons.refresh),
-            label: const Text('خطة ثانية'),
+            label: Text(tx('خطة ثانية', 'Another plan')),
           ),
         ],
       ),
@@ -226,12 +330,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(
-                'الخطة فوق الميزانية. استبدل وجبات بأرخص منها (⇄ يوريك فرق السعر)، أو ارفع الميزانية.',
+                tx('الخطة فوق الميزانية. استبدل وجبات بأرخص منها (⇄ يوريك فرق السعر)، أو ارفع الميزانية.', 'The plan is over budget. Swap meals for cheaper ones (⇄ shows the price difference), or raise the budget.'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           const SizedBox(height: 8),
-          const Text('عدّل اللي تبيه قبل ما تعتمد الخطة:',
+          Text(tx('عدّل اللي تبيه قبل ما تعتمد الخطة:', 'Change anything you like before approving the plan:'),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           const WeekList(),
@@ -244,7 +348,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style:
                 FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
             onPressed: () => AppScope.read(context).approvePlan(),
-            child: const Text('اعتمد الخطة ✓'),
+            child: Text(tx('اعتمد الخطة ✓', 'Approve plan ✓')),
           ),
         ),
       ),

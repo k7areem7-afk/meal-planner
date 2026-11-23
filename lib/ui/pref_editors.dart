@@ -1,4 +1,5 @@
 // Preference pickers, shared by onboarding and settings.
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../engine.dart';
@@ -12,6 +13,7 @@ enum PrefSection {
   store,
   people,
   meals,
+  sides,
   diet,
   cuisine,
   vibe,
@@ -23,20 +25,22 @@ enum PrefSection {
   budget,
 }
 
-const prefTitles = {
-  PrefSection.store: ('من وين تتسوق؟', 'نحسب الأسعار التقديرية حسب المتجر'),
-  PrefSection.people: ('كم شخص تطبخ لهم؟', 'نضبط الكميات على عددكم'),
-  PrefSection.meals: ('أي وجبات تبي نخطط لها؟', 'تقدر تغيّرها بعدين'),
-  PrefSection.diet: ('كيف تاكل؟', 'اختار واحد أو أكثر'),
-  PrefSection.cuisine: ('وش المطابخ اللي تحبها؟', 'نعطيها الأولوية (اختياري)'),
-  PrefSection.vibe: ('وش الجو اللي تبيه؟', 'اختار اللي يناسب يومك'),
-  PrefSection.target: ('عندك هدف سعرات؟', 'نختار وجبات قريبة من هدفك'),
-  PrefSection.allergies: ('عندكم حساسية من شيء؟', 'نستبعدها تماماً من كل الوصفات'),
-  PrefSection.dislikes: ('أشياء ما تحبها', 'ما نقترح وصفات فيها'),
-  PrefSection.appliances: ('وش عندك في المطبخ؟', 'نقترح وصفات تقدر تسويها'),
-  PrefSection.fridge: ('وش موجود عندك؟',
-      'اختار المكونات والبهارات الموجودة. نقدّم الوصفات اللي تستخدمها، وما نحسب سعرها'),
-  PrefSection.budget: ('ميزانية الأكل الأسبوعية', 'نبني الخطة وقائمة المشتريات تحتها'),
+Map<PrefSection, (String, String)> get prefTitles => {
+  PrefSection.store: (tx('من وين تتسوق؟', 'Where do you shop?'), tx('نحسب الأسعار التقديرية حسب المتجر', 'We estimate prices by store')),
+  PrefSection.people: (tx('كم شخص تطبخ لهم؟', 'How many people do you cook for?'), tx('نضبط الكميات على عددكم', 'We scale the amounts for you')),
+  PrefSection.meals: (tx('أي وجبات تبي نخطط لها؟', 'Which meals should we plan?'), tx('تقدر تغيّرها بعدين', 'You can change this later')),
+  PrefSection.sides: (tx('وش تبي مع كل وجبة؟', 'What would you like with each meal?'),
+      tx('شوربة أو سلطة أو مشروب أو تحلية، ونختارها لك كل يوم', 'Soup, salad, drink or dessert, picked for you every day')),
+  PrefSection.diet: (tx('كيف تاكل؟', 'How do you eat?'), tx('اختار واحد أو أكثر', 'Pick one or more')),
+  PrefSection.cuisine: (tx('وش المطابخ اللي تحبها؟', 'Which cuisines do you like?'), tx('نعطيها الأولوية (اختياري)', 'We give them priority (optional)')),
+  PrefSection.vibe: (tx('وش الجو اللي تبيه؟', 'What kind of vibe?'), tx('اختار اللي يناسب يومك', 'Pick what fits your days')),
+  PrefSection.target: (tx('عندك هدف سعرات؟', 'Got a calorie target?'), tx('نختار وجبات قريبة من هدفك', 'We pick meals close to your target')),
+  PrefSection.allergies: (tx('عندكم حساسية من شيء؟', 'Any allergies?'), tx('نستبعدها تماماً من كل الوصفات', 'We remove them from every recipe')),
+  PrefSection.dislikes: (tx('أشياء ما تحبها', 'Things you don’t like'), tx('ما نقترح وصفات فيها', 'We won’t suggest recipes with them')),
+  PrefSection.appliances: (tx('وش عندك في المطبخ؟', 'What’s in your kitchen?'), tx('نقترح وصفات تقدر تسويها', 'We suggest recipes you can make')),
+  PrefSection.fridge: (tx('وش موجود عندك؟', 'What do you already have?'),
+      tx('اختار المكونات والبهارات الموجودة. نقدّم الوصفات اللي تستخدمها، وما نحسب سعرها', 'Pick the ingredients and spices you have. We favor recipes that use them and don’t count their cost')),
+  PrefSection.budget: (tx('ميزانية الأكل الأسبوعية', 'Weekly food budget'), tx('نبني الخطة وقائمة المشتريات تحتها', 'We build the plan and shopping list under it')),
 };
 
 const _exclusive = {'vegetarian', 'vegan', 'pescatarian'};
@@ -104,7 +108,7 @@ class PrefEditor extends StatelessWidget {
                             .textTheme
                             .displayMedium
                             ?.copyWith(fontWeight: FontWeight.w800)),
-                    Text(prefs.people == 1 ? 'شخص' : 'أشخاص'),
+                    Text(prefs.people == 1 ? tx('شخص', 'person') : tx('أشخاص', 'people')),
                   ]),
                 ),
                 IconButton.filledTonal(
@@ -149,16 +153,52 @@ class PrefEditor extends StatelessWidget {
               prefs.leftovers = v;
               onChanged();
             },
-            title: const Text('أطبخ مرة وتكفي يومين'),
-            subtitle: const Text(
-                'للأكلات اللي تصلح تبات في الثلاجة بس، مثل المحاشي والمرق والكبسة. المقلي والسلطات والسمك دايماً طازجة.'),
+            title: Text(tx('أطبخ مرة وتكفي يومين', 'Cook once, eat two days')),
+            subtitle: Text(
+                tx('للأكلات اللي تصلح تبات في الثلاجة بس، مثل المحاشي والمرق والكبسة. المقلي والسلطات والسمك دايماً طازجة.', 'Only for dishes that keep well in the fridge, like mahshi, stews and kabsa. Fried food, salads and fish are always fresh.')),
           ),
+        ]);
+      case PrefSection.sides:
+        return Column(children: [
+          for (final slot in slotOrder.where(prefs.meals.contains))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${{'b': '🍳', 'l': '🍛', 'd': '🥗'}[slot]} ${slotNames[slot]}',
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 8, runSpacing: 8, children: [
+                        for (final o in sideOptions)
+                          FilterChip(
+                            label: Text('${o.emoji} ${o.title}'),
+                            selected: prefs.sides[slot]?.contains(o.id) ?? false,
+                            onSelected: (_) {
+                              final set = prefs.sides.putIfAbsent(slot, () => <String>{});
+                              set.contains(o.id) ? set.remove(o.id) : set.add(o.id);
+                              onChanged();
+                            },
+                          ),
+                      ]),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          Text(tx('اتركها فاضية لو ما تبي شيء مع الوجبة.',
+              'Leave empty if you want nothing extra.'),
+              style: const TextStyle(fontSize: 12)),
         ]);
       case PrefSection.diet:
         return Column(children: [
           OptionCard(
             horizontal: true,
-            option: const Option('none', '🍽️', 'بدون قيود', 'آكل كل شيء'),
+            option: Option('none', '🍽️', tx('بدون قيود', 'No restrictions'), tx('آكل كل شيء', 'Anything goes')),
             selected: prefs.diets.isEmpty,
             onTap: () {
               prefs.diets.clear();
@@ -223,7 +263,7 @@ class PrefEditor extends StatelessWidget {
             onTap: (k) => _toggle(prefs.appliances, k),
           ),
           const SizedBox(height: 8),
-          const Text('البوتاجاز والطاسة والحلة نفترض إنها موجودة.',
+          Text(tx('البوتاجاز والطاسة والحلة نفترض إنها موجودة.', 'We assume you have a stove, a pan and a pot.'),
               style: TextStyle(fontSize: 12)),
         ]);
       case PrefSection.fridge:
@@ -237,7 +277,7 @@ class PrefEditor extends StatelessWidget {
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   fontWeight: FontWeight.w800, color: cs.primary)),
           const SizedBox(height: 4),
-          Text('في الأسبوع', style: Theme.of(context).textTheme.bodyLarge),
+          Text(tx('في الأسبوع', 'per week'), style: Theme.of(context).textTheme.bodyLarge),
           Slider(
             min: 100,
             max: 2500,
@@ -253,8 +293,8 @@ class PrefEditor extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Text(
-                'يعني تقريباً ${fmtMoney(perMeal)} للوجبة الواحدة لكل شخص '
-                '(${prefs.people} × ${prefs.meals.length} وجبات × 7 أيام).',
+                tx('يعني تقريباً ${fmtMoney(perMeal)} للوجبة الواحدة لكل شخص ', 'That is about ${fmtMoney(perMeal)} per meal per person ')
+                tx('(${prefs.people} × ${prefs.meals.length} وجبات × 7 أيام).', '(${prefs.people} × ${prefs.meals.length} meals × 7 days).'),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -262,16 +302,16 @@ class PrefEditor extends StatelessWidget {
           TextButton.icon(
             onPressed: () async {
               final v = await askNumber(context,
-                  title: 'الميزانية الأسبوعية',
+                  title: tx('الميزانية الأسبوعية', 'Weekly budget'),
                   initial: prefs.budget,
-                  suffix: 'ر.س');
+                  suffix: tx('ر.س', 'SAR'));
               if (v != null && v > 0) {
                 prefs.budget = v;
                 onChanged();
               }
             },
             icon: const Icon(Icons.edit),
-            label: const Text('اكتب رقماً محدداً'),
+            label: Text(tx('اكتب رقماً محدداً', 'Type an exact amount')),
           ),
         ]);
     }
@@ -340,8 +380,8 @@ class _TargetEditor extends StatelessWidget {
     return Column(children: [
       OptionCard(
         horizontal: true,
-        option: const Option('no', '🍴', 'لا، خليها بسيطة',
-            'وجبات متوازنة ومشبعة بدون أرقام'),
+        option: Option('no', '🍴', tx('لا، خليها بسيطة', 'No, keep it simple'),
+            tx('وجبات متوازنة ومشبعة بدون أرقام', 'Balanced, filling meals. No numbers to track')),
         selected: !prefs.kcalTarget,
         onTap: () {
           prefs.kcalTarget = false;
@@ -351,8 +391,8 @@ class _TargetEditor extends StatelessWidget {
       const SizedBox(height: 12),
       OptionCard(
         horizontal: true,
-        option: const Option('yes', '🏋️', 'نعم، عندي هدف',
-            'حدد السعرات والبروتين والكارب والدهون'),
+        option: Option('yes', '🏋️', tx('نعم، عندي هدف', 'Yes, I have a target'),
+            tx('حدد السعرات والبروتين والكارب والدهون', 'Set calories, protein, carbs and fat')),
         selected: prefs.kcalTarget,
         onTap: () {
           prefs.kcalTarget = true;
@@ -368,28 +408,28 @@ class _TargetEditor extends StatelessWidget {
                 const SizedBox(height: 16),
                 Wrap(spacing: 8, children: [
                   ActionChip(
-                      label: const Text('تخسيس'),
+                      label: Text(tx('تخسيس', 'Weight loss')),
                       onPressed: () => preset(1500, 120, 120, 50)),
                   ActionChip(
-                      label: const Text('ثبات الوزن'),
+                      label: Text(tx('ثبات الوزن', 'Maintain weight')),
                       onPressed: () => preset(2000, 110, 220, 70)),
                   ActionChip(
-                      label: const Text('بناء عضل'),
+                      label: Text(tx('بناء عضل', 'Build muscle')),
                       onPressed: () => preset(2600, 170, 280, 80)),
                 ]),
                 const SizedBox(height: 8),
-                const Text('الأرقام لكل شخص في اليوم',
+                Text(tx('الأرقام لكل شخص في اليوم', 'Numbers are per person per day'),
                     style: TextStyle(fontSize: 12)),
                 const SizedBox(height: 8),
-                field('السعرات 🔥', prefs.kcal, 'سعرة', 100,
+                field(tx('السعرات 🔥', 'Calories 🔥'), prefs.kcal, tx('سعرة', 'kcal'), 100,
                     (v) => prefs.kcal = v),
                 const SizedBox(height: 8),
-                field('البروتين', prefs.protein, 'غ', 10,
+                field(tx('البروتين', 'Protein'), prefs.protein, tx('غ', 'g'), 10,
                     (v) => prefs.protein = v),
                 const SizedBox(height: 8),
-                field('الكارب', prefs.carbs, 'غ', 10, (v) => prefs.carbs = v),
+                field(tx('الكارب', 'Carbs'), prefs.carbs, tx('غ', 'g'), 10, (v) => prefs.carbs = v),
                 const SizedBox(height: 8),
-                field('الدهون', prefs.fat, 'غ', 5, (v) => prefs.fat = v),
+                field(tx('الدهون', 'Fat'), prefs.fat, tx('غ', 'g'), 5, (v) => prefs.fat = v),
               ]),
       ),
     ]);
@@ -414,13 +454,13 @@ String ingredientCategory(Ingredient i) {
   }
 }
 
-const fridgeFilters = [
-  ('all', 'الكل'),
-  ('fresh', 'خضار وفواكه'),
-  ('meat', 'لحوم وأسماك'),
-  ('fridge', 'ثلاجة'),
-  ('pantry', 'بقالة'),
-  ('spices', 'بهارات وأساسيات'),
+List<(String, String)> get fridgeFilters => [
+  ('all', tx('الكل', 'All')),
+  ('fresh', tx('خضار وفواكه', 'Fresh')),
+  ('meat', tx('لحوم وأسماك', 'Meat & fish')),
+  ('fridge', tx('ثلاجة', 'Fridge')),
+  ('pantry', tx('بقالة', 'Pantry')),
+  ('spices', tx('بهارات وأساسيات', 'Spices & basics')),
 ];
 
 class FridgePicker extends StatefulWidget {
@@ -455,9 +495,9 @@ class _FridgePickerState extends State<FridgePicker> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             prefixIcon: Icon(Icons.search),
-            hintText: 'ابحث عن مكوّن',
+            hintText: tx('ابحث عن مكوّن', 'Search foods'),
           ),
           onChanged: (v) => setState(() => q = v.trim()),
         ),
@@ -483,7 +523,7 @@ class _FridgePickerState extends State<FridgePicker> {
         const SizedBox(height: 8),
         Row(children: [
           Expanded(
-            child: Text('اخترت ${f.length} · هنا $visibleSelected من ${items.length}',
+            child: Text(tx('اخترت ${f.length} · هنا $visibleSelected من ${items.length}', 'Selected ${f.length} · here $visibleSelected of ${items.length}'),
                 style: TextStyle(color: cs.onSurfaceVariant)),
           ),
           TextButton.icon(
@@ -492,14 +532,14 @@ class _FridgePickerState extends State<FridgePicker> {
               widget.onChanged();
             },
             icon: const Icon(Icons.done_all, size: 18),
-            label: const Text('تحديد الكل'),
+            label: Text(tx('تحديد الكل', 'Select all')),
           ),
           TextButton(
             onPressed: () {
               f.removeAll(items.map((i) => i.id));
               widget.onChanged();
             },
-            child: const Text('إلغاء'),
+            child: Text(tx('إلغاء', 'Cancel')),
           ),
         ]),
         GridView.builder(
@@ -613,23 +653,23 @@ class _PrefEditPageState extends State<PrefEditPage> {
               final regen = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('تحديث الخطة؟'),
-                  content: const Text(
-                      'تبي نعيد بناء خطة الأسبوع على التفضيلات الجديدة؟ الوجبات المقفلة تبقى كما هي.'),
+                  title: Text(tx('تحديث الخطة؟', 'Update the plan?')),
+                  content: Text(
+                      tx('تبي نعيد بناء خطة الأسبوع على التفضيلات الجديدة؟ الوجبات المقفلة تبقى كما هي.', 'Rebuild this week’s plan with the new preferences? Locked meals stay as they are.')),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('لاحقاً')),
+                        child: Text(tx('لاحقاً', 'Later'))),
                     FilledButton(
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('أعد البناء')),
+                        child: Text(tx('أعد البناء', 'Rebuild'))),
                   ],
                 ),
               );
               if (regen == true) app.generate();
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text('حفظ'),
+            child: Text(tx('حفظ', 'Save')),
           ),
         ),
       ),

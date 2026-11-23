@@ -1,3 +1,4 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../engine.dart';
@@ -35,17 +36,17 @@ class _PriceEditorState extends State<PriceEditor> {
 
     return Scaffold(
       appBar: AppBar(
-          title: Text('الأسعار في ${app.c.store(app.prefs.storeId).name}')),
+          title: Text(tx('الأسعار في ${app.c.store(app.prefs.storeId).name}', 'Prices at ${app.c.store(app.prefs.storeId).name}'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
-          const Text(
-              'الأسعار تقديرية. عدّل أي سعر حسب فاتورتك وكل الحسابات تتحدث. التعديل يخص المتجر المختار فقط.'),
+          Text(
+              tx('الأسعار تقديرية. عدّل أي سعر حسب فاتورتك وكل الحسابات تتحدث. التعديل يخص المتجر المختار فقط.', 'Prices are estimates. Change any price from your receipt and everything updates. Changes apply to the chosen store only.')),
           const SizedBox(height: 10),
           TextField(
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               prefixIcon: Icon(Icons.search),
-              hintText: 'ابحث عن مكوّن',
+              hintText: tx('ابحث عن مكوّن', 'Search foods'),
               border: OutlineInputBorder(),
               isDense: true,
             ),
@@ -53,7 +54,7 @@ class _PriceEditorState extends State<PriceEditor> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('مكونات خطة هذا الأسبوع فقط'),
+            title: Text(tx('مكونات خطة هذا الأسبوع فقط', 'Only this week’s ingredients')),
             value: onlyPlan,
             onChanged: (v) => setState(() => onlyPlan = v),
           ),
@@ -62,7 +63,7 @@ class _PriceEditorState extends State<PriceEditor> {
               contentPadding: EdgeInsets.zero,
               title: Text(i.name),
               subtitle: Text(
-                  '${app.c.aisleName(i.aisle)} · العبوة ${fmtPack(pr.packSize(i), i)}'),
+                  tx('${app.c.aisleName(i.aisle)} · العبوة ${fmtPack(pr.packSize(i), i)}', '${app.c.aisleName(i.aisle)} · pack ${fmtPack(pr.packSize(i), i)}')),
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 if (pr.override(i.id) != null)
                   const Padding(
@@ -94,27 +95,27 @@ Future<void> editPriceDialog(BuildContext context, Ingredient i) async {
           controller: pack,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
-              labelText: 'حجم العبوة', suffixText: unitLabel(i)),
+              labelText: tx('حجم العبوة', 'Pack size'), suffixText: unitLabel(i)),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: price,
           autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-              labelText: 'سعر العبوة', suffixText: 'ر.س'),
+          decoration: InputDecoration(
+              labelText: tx('سعر العبوة', 'Pack price'), suffixText: tx('ر.س', 'SAR')),
         ),
       ]),
       actions: [
         if (pr.override(i.id) != null)
           TextButton(
               onPressed: () => Navigator.pop(ctx, 'reset'),
-              child: const Text('السعر الافتراضي')),
+              child: Text(tx('السعر الافتراضي', 'Default price'))),
         TextButton(
-            onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            onPressed: () => Navigator.pop(ctx), child: Text(tx('إلغاء', 'Cancel'))),
         FilledButton(
             onPressed: () => Navigator.pop(ctx, 'save'),
-            child: const Text('حفظ')),
+            child: Text(tx('حفظ', 'Save'))),
       ],
     ),
   );

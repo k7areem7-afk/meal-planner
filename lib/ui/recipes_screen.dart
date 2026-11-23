@@ -1,8 +1,10 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../engine.dart';
 import '../models.dart';
 import '../state.dart';
+import 'shell.dart';
 import 'recipe_screen.dart';
 import 'widgets.dart';
 
@@ -25,7 +27,11 @@ class _RecipesScreenState extends State<RecipesScreen> {
     final pr = app.pricing;
     var list = app.c.recipes.where((r) {
       if (q.isNotEmpty && !r.title.contains(q)) return false;
-      if (meal != 'all' && !r.meals.contains(meal)) return false;
+      if (meal != 'all') {
+        if (slotOrder.contains(meal) ? !r.meals.contains(meal) : !r.course.contains(meal)) {
+          return false;
+        }
+      }
       if (style != 'all' && !r.styles.contains(style)) return false;
       if (onlyMine && !recipeAllowed(r, app.prefs)) return false;
       return true;
@@ -45,17 +51,18 @@ class _RecipesScreenState extends State<RecipesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('الوصفات (${list.length})'),
+        leading: const ShellBack(),
+        title: Text(tx('الوصفات (${list.length})', 'Recipes (${list.length})')),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
             initialValue: sort,
             onSelected: (v) => setState(() => sort = v),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'cost', child: Text('الأرخص أولاً')),
-              PopupMenuItem(value: 'time', child: Text('الأسرع أولاً')),
-              PopupMenuItem(value: 'kcal', child: Text('الأقل سعرات')),
-              PopupMenuItem(value: 'protein', child: Text('الأعلى بروتين')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'cost', child: Text(tx('الأرخص أولاً', 'Cheapest first'))),
+              PopupMenuItem(value: 'time', child: Text(tx('الأسرع أولاً', 'Fastest first'))),
+              PopupMenuItem(value: 'kcal', child: Text(tx('الأقل سعرات', 'Fewest calories'))),
+              PopupMenuItem(value: 'protein', child: Text(tx('الأعلى بروتين', 'Most protein'))),
             ],
           ),
         ],
@@ -64,9 +71,9 @@ class _RecipesScreenState extends State<RecipesScreen> {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
           TextField(
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               prefixIcon: Icon(Icons.search),
-              hintText: 'ابحث: كبسة، شوربة، دجاج...',
+              hintText: tx('ابحث: كبسة، شوربة، دجاج...', 'Search: kabsa, soup, chicken...'),
               border: OutlineInputBorder(),
               isDense: true,
             ),
@@ -76,7 +83,14 @@ class _RecipesScreenState extends State<RecipesScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
-              for (final e in {'all': 'الكل', ...slotNames}.entries)
+              for (final e in {
+                'all': tx('الكل', 'All'),
+                ...slotNames,
+                'dessert': tx('🍰 حلويات', '🍰 Desserts'),
+                'drink': tx('🥤 مشروبات', '🥤 Drinks'),
+                'soup': tx('🥣 شوربات', '🥣 Soups'),
+                'salad': tx('🥗 سلطات', '🥗 Salads'),
+              }.entries)
                 Padding(
                   padding: const EdgeInsetsDirectional.only(end: 8),
                   child: ChoiceChip(
@@ -92,7 +106,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(children: [
               for (final e in {
-                'all': 'كل المطابخ',
+                'all': tx('كل المطابخ', 'All cuisines'),
                 for (final s in app.c.styles) s.id: s.name
               }.entries)
                 Padding(
@@ -107,15 +121,15 @@ class _RecipesScreenState extends State<RecipesScreen> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('اللي تناسب تفضيلاتي فقط'),
-            subtitle: const Text('الحساسية، اللي ما تحبه، الأجهزة، النظام الغذائي'),
+            title: Text(tx('اللي تناسب تفضيلاتي فقط', 'Only ones that fit my preferences')),
+            subtitle: Text(tx('الحساسية، اللي ما تحبه، الأجهزة، النظام الغذائي', 'Allergies, dislikes, appliances, diet')),
             value: onlyMine,
             onChanged: (v) => setState(() => onlyMine = v),
           ),
           if (list.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(32),
-              child: Center(child: Text('ما لقينا وصفات بهذي الفلاتر')),
+              child: Center(child: Text(tx('ما لقينا وصفات بهذي الفلاتر', 'No recipes match these filters'))),
             ),
           for (final r in list)
             Padding(
@@ -136,7 +150,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                     ],
                   ),
                   trailing: IconButton(
-                    tooltip: 'أضف للخطة',
+                    tooltip: tx('أضف للخطة', 'Add to plan'),
                     icon: const Icon(Icons.playlist_add),
                     onPressed: () =>
                         addToPlanDialog(context, r, app.prefs.people),

@@ -1,4 +1,5 @@
 // Pricing, filtering, plan generation and the grocery list.
+import 'i18n.dart';
 import 'dart:math';
 
 import 'models.dart';
@@ -69,16 +70,29 @@ class GroceryLine {
 Map<String, double> aggregate(
     Catalog c, List<PlannedMeal> meals, Map<String, List<String>> usedBy) {
   final amounts = <String, double>{};
-  for (final m in meals) {
-    if (m.leftover) continue; // already cooked yesterday
-    final r = c.recipeById[m.recipeId];
-    if (r == null) continue;
-    final f = m.servings / r.servings;
+  void add(Recipe r, double servings) {
+    final f = servings / r.servings;
     for (final l in r.lines) {
       amounts[l.ingId] = (amounts[l.ingId] ?? 0) + l.b * f;
       final list = usedBy.putIfAbsent(l.ingId, () => <String>[]);
       if (!list.contains(r.id)) list.add(r.id);
     }
+  }
+
+  for (final m in meals) {
+    // Sides are made fresh every day, for the people eating that day.
+    final partner = partnerOf(meals, m);
+    final eaters = partner == null
+        ? m.servings
+        : (m.servings - partner.servings).clamp(1, 99).toInt();
+    for (final id in m.sides) {
+      final s = c.recipeById[id];
+      if (s != null) add(s, eaters.toDouble());
+    }
+    if (m.leftover) continue; // already cooked yesterday
+    final r = c.recipeById[m.recipeId];
+    if (r == null) continue;
+    add(r, m.servings.toDouble());
   }
   return amounts;
 }
@@ -330,6 +344,7 @@ class Planner {
       }
     }
     _fitBudget(plan);
+    assignSides(plan);
     plan.sort((a, b) => a.day != b.day
         ? a.day.compareTo(b.day)
         : slotOrder.indexOf(a.slot).compareTo(slotOrder.indexOf(b.slot)));
@@ -382,6 +397,49 @@ class Planner {
     }
   }
 
+  // ---------------------------------------------------------- sides
+
+  /// Recipes that can be served as [course] (soup, salad, drink, dessert).
+  List<Recipe> sideCandidates(String course) => c.recipes
+      .where((r) => r.course.contains(course))
+      .where((r) => recipeAllowed(r, p, strict: false))
+      .toList();
+
+  String? pickSide(List<PlannedMeal> plan, PlannedMeal m, String course) {
+    final cands = sideCandidates(course)
+        .where((r) => r.id != m.recipeId)
+        .toList();
+    if (cands.isEmpty) return null;
+    double score(Recipe r) {
+      var s = -pr.costPerServing(r) * 0.8 + rng.nextDouble() * 4;
+      s += min(2, fridgeHits(r)) * 2;
+      for (final x in plan) {
+        if (!x.sides.contains(r.id)) continue;
+        final gap = (x.day - m.day).abs();
+        s -= gap == 0 ? 20 : (gap == 1 ? 8 : 2);
+      }
+      return s;
+    }
+
+    final scores = {for (final r in cands) r.id: score(r)};
+    cands.sort((a, b) => scores[b.id]!.compareTo(scores[a.id]!));
+    final top = cands.take(min(3, cands.length)).toList();
+    return top[rng.nextInt(top.length)].id;
+  }
+
+  /// Adds the soups, salads, drinks and desserts chosen in preferences.
+  void assignSides(List<PlannedMeal> plan) {
+    for (final m in plan) {
+      if (m.locked && m.sides.isNotEmpty) continue;
+      m.sides = [];
+      for (final course in const ['soup', 'salad', 'drink', 'dessert']) {
+        if (!(p.sides[m.slot]?.contains(course) ?? false)) continue;
+        final id = pickSide(plan, m, course);
+        if (id != null) m.sides.add(id);
+      }
+    }
+  }
+
   /// Alternatives for one slot (never yesterday's or tomorrow's dish).
   List<Alternative> alternatives(List<PlannedMeal> plan, PlannedMeal target) {
     final out = <Alternative>[];
@@ -421,8 +479,8 @@ class Planner {
 // ------------------------------------------------------------- formatting
 
 String fmtMoney(double v) {
-  if (v >= 100) return '${v.round()} ر.س';
-  return '${v.toStringAsFixed(v < 10 ? 2 : 1)} ر.س';
+  if (v >= 100) return tx('${v.round()} ر.س', 'SAR ${v.round()}');
+  return tx('${v.toStringAsFixed(v < 10 ? 2 : 1)} ر.س', 'SAR ${v.toStringAsFixed(v < 10 ? 2 : 1)}');
 }
 
 String _num(double v) {
@@ -450,20 +508,20 @@ String _frac(double v) {
 String fmtQty(double q, String u, Ingredient i) {
   switch (u) {
     case 'g':
-      if (q >= 1000) return '${_num(q / 1000)} كغ';
-      if (q >= 50) return '${(q / 5).round() * 5} غ';
-      return '${_num(q)} غ';
+      if (q >= 1000) return tx('${_num(q / 1000)} كغ', '${_num(q / 1000)} kg');
+      if (q >= 50) return tx('${(q / 5).round() * 5} غ', '${(q / 5).round() * 5} g');
+      return tx('${_num(q)} غ', '${_num(q)} g');
     case 'ml':
-      if (q >= 1000) return '${_num(q / 1000)} لتر';
-      return '${(q / 5).round() * 5} مل';
+      if (q >= 1000) return tx('${_num(q / 1000)} لتر', '${_num(q / 1000)} L');
+      return tx('${(q / 5).round() * 5} مل', '${(q / 5).round() * 5} ml');
     case 'tsp':
-      return '${_frac(q)} ملعقة صغيرة';
+      return tx('${_frac(q)} ملعقة صغيرة', '${_frac(q)} tsp');
     case 'tbsp':
-      return '${_frac(q)} ملعقة كبيرة';
+      return tx('${_frac(q)} ملعقة كبيرة', '${_frac(q)} tbsp');
     case 'cup':
-      return '${_frac(q)} كوب';
+      return tx('${_frac(q)} كوب', '${_frac(q)} cup');
     case 'pc':
-      return '${_frac(q)} ${i.pcName ?? 'حبة'}';
+      return tx('${_frac(q)} ${i.pcName ?? 'حبة'}', '${_frac(q)} ${i.pcName ?? 'pc'}');
   }
   return _num(q);
 }
@@ -476,26 +534,39 @@ String fmtBase(double amt, Ingredient i) {
     case 'ml':
       return fmtQty(amt, 'ml', i);
     default:
-      return '${_frac(amt)} ${i.pcName ?? 'حبة'}';
+      return tx('${_frac(amt)} ${i.pcName ?? 'حبة'}', '${_frac(amt)} ${i.pcName ?? 'pc'}');
   }
 }
 
 String fmtPack(double size, Ingredient i) {
   switch (i.unit) {
     case 'g':
-      return size >= 1000 ? '${_num(size / 1000)} كغ' : '${_num(size)} غ';
+      return size >= 1000 ? tx('${_num(size / 1000)} كغ', '${_num(size / 1000)} kg') : tx('${_num(size)} غ', '${_num(size)} g');
     case 'ml':
-      return size >= 1000 ? '${_num(size / 1000)} لتر' : '${_num(size)} مل';
+      return size >= 1000 ? tx('${_num(size / 1000)} لتر', '${_num(size / 1000)} L') : tx('${_num(size)} مل', '${_num(size)} ml');
     default:
-      return '${_num(size)} ${i.pcName ?? 'حبة'}';
+      return tx('${_num(size)} ${i.pcName ?? 'حبة'}', '${_num(size)} ${i.pcName ?? 'pc'}');
   }
 }
 
 String unitLabel(Ingredient i) =>
-    i.unit == 'g' ? 'غرام' : (i.unit == 'ml' ? 'مل' : (i.pcName ?? 'حبة'));
+    i.unit == 'g' ? tx('غرام', 'grams') : (i.unit == 'ml' ? tx('مل', 'ml') : (i.pcName ?? tx('حبة', 'pc')));
 
 /// Steps keep the amounts in sync with the chosen servings.
 String renderStep(String step, Recipe r, double factor, Catalog c) {
+  // An Arabic step keeps Arabic names and units even in English mode.
+  final saved = L.en;
+  if (_arabic.hasMatch(step.replaceAll(RegExp(r'\{\w+\}'), ''))) L.en = false;
+  try {
+    return _render(step, r, factor, c);
+  } finally {
+    L.en = saved;
+  }
+}
+
+final _arabic = RegExp(r'[\u0600-\u06FF]');
+
+String _render(String step, Recipe r, double factor, Catalog c) {
   return step.replaceAllMapped(RegExp(r'\{(\w+)\}'), (m) {
     final id = m.group(1)!;
     final line = r.lines.where((l) => l.ingId == id);
@@ -531,6 +602,10 @@ Macros dayMacros(Catalog c, List<PlannedMeal> plan, int day) {
   for (final x in plan.where((x) => x.day == day)) {
     final r = c.recipeById[x.recipeId];
     if (r != null) m.add(r);
+    for (final id in x.sides) {
+      final s = c.recipeById[id];
+      if (s != null) m.add(s);
+    }
   }
   return m;
 }
@@ -633,7 +708,7 @@ Recipe? buildRecipe(Map<String, dynamic> j, Catalog c, String id) {
       .map((e) => e.toString().trim())
       .where((e) => e.isNotEmpty)
       .toList();
-  if (steps.isEmpty) steps.add('حضّر المكونات واطبخها حسب رغبتك.');
+  if (steps.isEmpty) steps.add(tx('حضّر المكونات واطبخها حسب رغبتك.', 'Prepare the ingredients and cook them your way.'));
   final meals = (j['meals'] as List? ?? const ['l', 'd'])
       .map((e) => e.toString())
       .where(slotOrder.contains)
@@ -659,7 +734,8 @@ Recipe? buildRecipe(Map<String, dynamic> j, Catalog c, String id) {
   if (ids.contains('olive_oil') && !fried) diets.add('mediterranean');
   return Recipe(
     id: id,
-    title: title,
+    titleAr: title,
+    titleEn: title,
     emoji: _emoji(j['emoji']),
     meals: meals.isEmpty ? ['l', 'd'] : meals,
     styles: (j['styles'] as List? ?? const [])

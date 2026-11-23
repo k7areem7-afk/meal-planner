@@ -1,8 +1,10 @@
+import '../i18n.dart';
 import 'package:flutter/material.dart';
 
 import '../engine.dart';
 import '../models.dart';
 import '../state.dart';
+import 'shell.dart';
 import 'anim.dart';
 import 'pref_editors.dart';
 import 'recipe_screen.dart';
@@ -54,9 +56,10 @@ class _AiScreenState extends State<AiScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const ShellBack(),
         flexibleSpace: Container(
             decoration: BoxDecoration(gradient: Brand.warmGradient)),
-        title: const Text('اقترح لي من الموجود ✨',
+        title: Text(tx('اقترح لي من الموجود ✨', 'Cook with what I have ✨'),
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
         foregroundColor: Colors.white,
       ),
@@ -73,7 +76,7 @@ class _AiScreenState extends State<AiScreen> {
                     const Text('🧊', style: TextStyle(fontSize: 26)),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text('الموجود عندك (${mine.length})',
+                      child: Text(tx('الموجود عندك (${mine.length})', 'What you have (${mine.length})'),
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w800)),
                     ),
@@ -84,13 +87,13 @@ class _AiScreenState extends State<AiScreen> {
                               builder: (_) =>
                                   const PrefEditPage(PrefSection.fridge))),
                       icon: const Icon(Icons.edit, size: 18),
-                      label: const Text('عدّل'),
+                      label: Text(tx('عدّل', 'Edit')),
                     ),
                   ]),
                   const SizedBox(height: 8),
                   if (mine.isEmpty)
-                    const Text(
-                        'ما اخترت مكونات بعد. اضغط "عدّل" واختار الموجود في ثلاجتك ومطبخك.')
+                    Text(
+                        tx('ما اخترت مكونات بعد. اضغط "عدّل" واختار الموجود في ثلاجتك ومطبخك.', 'No ingredients chosen yet. Tap "Edit" and pick what is in your fridge and kitchen.'))
                   else
                     Wrap(spacing: 6, runSpacing: 6, children: [
                       for (final i in mine)
@@ -103,9 +106,9 @@ class _AiScreenState extends State<AiScreen> {
               ),
             ),
           ),
-          const SectionTitle('📖 من مكتبتنا (بدون إنترنت)'),
+          SectionTitle(tx('📖 من مكتبتنا (بدون إنترنت)', '📖 From our library (offline)')),
           if (matches.isEmpty)
-            const Text('اختار مكونات أكثر عشان نلقى وصفات تناسبها.')
+            Text(tx('اختار مكونات أكثر عشان نلقى وصفات تناسبها.', 'Pick more ingredients so we can find matching recipes.'))
           else
             for (final (i, m) in matches.indexed)
               FadeSlideIn(
@@ -123,8 +126,8 @@ class _AiScreenState extends State<AiScreen> {
                         AnimatedBar(value: m.ratio, height: 6),
                         const SizedBox(height: 4),
                         Text(m.missing.isEmpty
-                            ? 'عندك كل المكونات ✓'
-                            : 'عندك ${m.have} من ${m.total} · ناقصك: ${m.missing.take(4).map((x) => x.name).join('، ')}'),
+                            ? tx('عندك كل المكونات ✓', 'You have everything ✓')
+                            : tx('عندك ${m.have} من ${m.total} · ناقصك: ${m.missing.take(4).map((x) => x.name).join('، ')}', 'You have ${m.have} of ${m.total} · missing: ${m.missing.take(4).map((x) => x.name).join(', ')}')),
                         MacroRow.of(m.recipe),
                       ],
                     ),
@@ -135,7 +138,7 @@ class _AiScreenState extends State<AiScreen> {
                   ),
                 ),
               ),
-          const SectionTitle('✨ وصفات جديدة بالذكاء الاصطناعي'),
+          SectionTitle(tx('✨ وصفات جديدة بالذكاء الاصطناعي', '✨ New recipes with AI')),
           if (g == null)
             Card(
               color: Brand.yellow.withValues(alpha: 0.15),
@@ -144,8 +147,8 @@ class _AiScreenState extends State<AiScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                        'عشان الذكاء الاصطناعي يكتب لك وصفات جديدة من مكوناتك، اربطه بحساب قوقل (مجاني، خطوتين).',
+                    Text(
+                        tx('عشان الذكاء الاصطناعي يكتب لك وصفات جديدة من مكوناتك، اربطه بحساب قوقل (مجاني، خطوتين).', 'Link AI to your Google account (free, two steps) to get new recipes from your ingredients.'),
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 10),
                     FilledButton.icon(
@@ -156,7 +159,7 @@ class _AiScreenState extends State<AiScreen> {
                               builder: (_) =>
                                   const AiSettingsPage(autoOpen: true))),
                       icon: const Icon(Icons.link),
-                      label: const Text('اربط Gemini الآن'),
+                      label: Text(tx('اربط Gemini الآن', 'Link Gemini now')),
                     ),
                   ],
                 ),
@@ -164,7 +167,7 @@ class _AiScreenState extends State<AiScreen> {
             )
           else ...[
             Row(children: [
-              const Text('كم وصفة؟'),
+              Text(tx('كم وصفة؟', 'How many?')),
               const SizedBox(width: 12),
               SegmentedButton<int>(
                 segments: const [
@@ -188,7 +191,7 @@ class _AiScreenState extends State<AiScreen> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.auto_awesome),
-              label: Text(busy ? 'نفكر في وصفات لك...' : 'اقترح علي وصفات'),
+              label: Text(busy ? tx('نفكر في وصفات لك...', 'Thinking of recipes for you...') : tx('اقترح علي وصفات', 'Suggest recipes')),
             ),
             if (busy)
               const Padding(
@@ -216,13 +219,13 @@ class _AiScreenState extends State<AiScreen> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${r.minutes} دقيقة · ${r.lines.length} مكونات'
-                            '${app.isSaved(r.id) ? ' · محفوظة ✓' : ''}'),
+                        Text(tx('${r.minutes} دقيقة · ${r.lines.length} مكونات', '${r.minutes} min · ${r.lines.length} ingredients')
+                            tx('${app.isSaved(r.id) ? ' · محفوظة ✓' : ''}', '${app.isSaved(r.id) ? ' · saved ✓' : ''}')),
                         MacroRow.of(r),
                       ],
                     ),
                     trailing: IconButton(
-                      tooltip: 'احفظ',
+                      tooltip: tx('احفظ', 'Save'),
                       icon: Icon(app.isSaved(r.id)
                           ? Icons.bookmark
                           : Icons.bookmark_add_outlined),

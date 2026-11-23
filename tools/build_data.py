@@ -15,6 +15,8 @@ from recipes import REC, STYLES  # noqa: E402
 from recipes2 import KEEP  # noqa: E402
 from recipes_eg import VIBES  # noqa: E402
 import recipes_health  # noqa: E402,F401
+from recipes_sweet import COURSE  # noqa: E402
+from english import AISLES_EN, ING_EN, PC_EN, REC_EN, STORES_EN, STYLES_EN  # noqa: E402
 
 FIBER = {"red_lentils", "brown_lentils", "chickpeas_can", "chickpeas_dry",
          "kidney_beans", "white_beans", "black_eyed_peas", "fava_can",
@@ -97,7 +99,7 @@ for r in REC:
     if rid in seen:
         errors.append(f"{rid}: duplicate recipe id")
     seen.add(rid)
-    if not set(r["meals"]) <= MEALS or not r["meals"]:
+    if not set(r["meals"]) <= MEALS or (not r["meals"] and rid not in COURSE):
         errors.append(f"{rid}: bad meals")
     if not set(r["styles"]) <= style_ids:
         errors.append(f"{rid}: bad styles {r['styles']}")
@@ -180,7 +182,7 @@ for r in REC:
     if len(set(ids) & FIBER) >= 1 and (len(set(ids) & FIBER) >= 2 or any(i in FIBER for i in ids[:2])):
         vibes.add("fiber")
     recipes_out.append({
-        "id": rid, "title": r["title"], "emoji": r["emoji"],
+        "id": rid, "title": r["title"], "titleEn": REC_EN.get(rid, ""), "emoji": r["emoji"],
         "meals": r["meals"], "styles": r["styles"], "minutes": r["mins"],
         "appliances": r["appl"], "servings": s, "ingredients": lines,
         "steps": r["steps"],
@@ -191,6 +193,7 @@ for r in REC:
         "fried": fried,
         "diets": diets,
         "vibes": sorted(vibes),
+        "course": sorted(COURSE.get(rid, set())),
     })
 
 for i in ING:
@@ -199,6 +202,15 @@ for i in ING:
 for k in VIBES:
     if k not in seen:
         errors.append(f"VIBES has unknown recipe {k}")
+for i in ING:
+    if i["id"] not in ING_EN:
+        errors.append(f"no English name for ingredient {i['id']}")
+for r in REC:
+    if r["id"] not in REC_EN:
+        errors.append(f"no English title for recipe {r['id']}")
+for k in COURSE:
+    if k not in seen:
+        errors.append(f"COURSE has unknown recipe {k}")
 for k in KEEP:
     if k not in seen:
         errors.append(f"KEEP has unknown recipe {k}")
@@ -212,13 +224,14 @@ if errors:
 os.makedirs(OUT, exist_ok=True)
 catalog = {
     "version": 1,
-    "aisles": [{"id": a, "name": n} for a, n in AISLES],
-    "stores": [{"id": s, "name": n, "factor": fct} for s, n, fct in STORES],
-    "styles": [{"id": s, "name": n} for s, n in STYLES],
+    "aisles": [{"id": a, "name": n, "nameEn": AISLES_EN[a]} for a, n in AISLES],
+    "stores": [{"id": s, "name": n, "nameEn": STORES_EN[s], "factor": fct} for s, n, fct in STORES],
+    "styles": [{"id": s, "name": n, "nameEn": STYLES_EN[s]} for s, n in STYLES],
     "ingredients": [{
-        "id": i["id"], "name": i["name"], "aisle": i["aisle"],
+        "id": i["id"], "name": i["name"], "nameEn": ING_EN[i["id"]], "aisle": i["aisle"],
         "unit": i["unit"], "pack": i["pack"], "price": i["price"],
-        "pcName": i["pcn"], "pcWeight": i["pcw"], "density": i["dens"],
+        "pcName": i["pcn"], "pcNameEn": PC_EN.get(i["pcn"]) if i["pcn"] else None,
+        "pcWeight": i["pcw"], "density": i["dens"],
         "allergens": i["allergens"], "tags": i["tags"], "pantry": i["pantry"],
         "emoji": EMOJI.get(i["id"], "🥫"), "nutr": list(i["nutr"]),
     } for i in ING],
@@ -252,4 +265,5 @@ from collections import Counter
 print("  egyptian:", sum("egyptian" in x["styles"] for x in recipes_out), " healthy:", sum("healthy" in x["styles"] for x in recipes_out))
 print("  diets:", dict(Counter(d for x in recipes_out for d in x["diets"])))
 print("  vibes:", dict(Counter(v for x in recipes_out for v in x["vibes"])))
+print("  course:", dict(Counter(c for x in recipes_out for c in x["course"])))
 print("  kcal range:", min(x["nutrition"]["kcal"] for x in recipes_out), max(x["nutrition"]["kcal"] for x in recipes_out))

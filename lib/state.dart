@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ai.dart';
 import 'engine.dart';
+import 'i18n.dart';
+import 'notify.dart';
 import 'models.dart';
 
 class AppState extends ChangeNotifier {
@@ -26,6 +28,10 @@ class AppState extends ChangeNotifier {
   String geminiKey = '';
   String themeId = 'mango';
   String themeMode = 'system'; // system | light | dark
+  String lang = 'ar';
+  bool langChosen = false;
+  Map<String, List<String>> stepsEn = {}; // AI translations, by recipe id
+  NotifSettings notif = NotifSettings();
   String geminiModel = Gemini.defaultModel;
   List<Recipe> userRecipes = [];
 
@@ -77,6 +83,12 @@ class AppState extends ChangeNotifier {
     geminiKey = (j['geminiKey'] as String?) ?? '';
     themeId = (j['themeId'] as String?) ?? 'mango';
     themeMode = (j['themeMode'] as String?) ?? 'system';
+    lang = (j['lang'] as String?) ?? 'ar';
+    langChosen = j['langChosen'] == true || j['onboarded'] == true;
+    L.en = lang == 'en';
+    stepsEn = ((j['stepsEn'] as Map?) ?? {}).map((k, v) =>
+        MapEntry(k.toString(), (v as List).map((e) => e.toString()).toList()));
+    notif = NotifSettings.fromJson(((j['notif'] as Map?) ?? {}).cast<String, dynamic>());
     geminiModel = (j['geminiModel'] as String?) ?? Gemini.defaultModel;
     onboarded = j['onboarded'] == true;
     prefs = Prefs.fromJson((j['prefs'] as Map).cast<String, dynamic>());
@@ -113,6 +125,10 @@ class AppState extends ChangeNotifier {
         'geminiKey': geminiKey,
         'themeId': themeId,
         'themeMode': themeMode,
+        'lang': lang,
+        'langChosen': langChosen,
+        'stepsEn': stepsEn,
+        'notif': notif.toJson(),
         'geminiModel': geminiModel,
         'userRecipes': userRecipes.map((r) => r.toJson()).toList(),
       };
@@ -127,6 +143,23 @@ class AppState extends ChangeNotifier {
     _save();
   }
 
+  /// Plan or reminder settings changed: also refresh scheduled reminders.
+  void _planChanged() {
+    _changed();
+    if (onboarded) Notifier.schedulePlan(this);
+  }
+
+  static String _sidesKey(Prefs p) => (p.sides.entries
+          .map((e) => '${e.key}:${(e.value.toList()..sort()).join(',')}')
+          .toList()
+        ..sort())
+      .join('|');
+
+  DateTime mealTime(int day, String slot) {
+    final t = notif.times[slot] ?? const {'b': 8 * 60, 'l': 14 * 60, 'd': 20 * 60}[slot]!;
+    return dayDate(day).add(Duration(minutes: t));
+  }
+
   // ------------------------------------------------------------ plan
 
   Set<String> get have => prefs.fridge;
@@ -139,7 +172,7 @@ class AppState extends ChangeNotifier {
     plan = res.meals;
     planStart = _today();
     checked.clear();
-    _changed();
+    _planChanged();
     return res;
   }
 
@@ -150,19 +183,21 @@ class AppState extends ChangeNotifier {
   }
 
   void updatePrefs(Prefs p) {
+    final sidesChanged = _sidesKey(prefs) != _sidesKey(p);
     prefs = p;
+    if (sidesChanged) planner().assignSides(plan);
     for (final m in plan) {
       if (m.locked) continue;
       m.servings = m.leftover || partnerOf(plan, m) == null
           ? p.people
           : p.people * 2;
     }
-    _changed();
+    _planChanged();
   }
 
   void replaceMeal(PlannedMeal m, String recipeId) {
     applyReplace(plan, m, recipeId, c);
-    _changed();
+    _planChanged();
   }
 
   void addMeal(int day, String slot, String recipeId, {int? servings}) {
@@ -174,12 +209,14 @@ class AppState extends ChangeNotifier {
         slot: slot,
         recipeId: recipeId,
         servings: servings ?? prefs.people));
-    _changed();
+    final added = plan.last;
+    planner().assignSides([added]);
+    _planChanged();
   }
 
   void removeMeal(PlannedMeal m) {
     applyRemove(plan, m);
-    _changed();
+    _planChanged();
   }
 
   void toggleLock(PlannedMeal m) {
@@ -197,6 +234,21 @@ class AppState extends ChangeNotifier {
 
   void setServings(PlannedMeal m, int s) {
     m.servings = s.clamp(1, 20).toInt();
+    _changed();
+  }
+
+  void setSide(PlannedMeal m, int index, String recipeId) {
+    if (index < m.sides.length) m.sides[index] = recipeId;
+    _changed();
+  }
+
+  void removeSide(PlannedMeal m, int index) {
+    if (index < m.sides.length) m.sides.removeAt(index);
+    _changed();
+  }
+
+  void addSide(PlannedMeal m, String recipeId) {
+    m.sides.add(recipeId);
     _changed();
   }
 
@@ -300,6 +352,30 @@ class AppState extends ChangeNotifier {
 
   void approvePlan() {
     onboarded = true;
+    _planChanged();
+  }
+
+  /// Preview a language on the first screen without leaving it.
+  void setLangDraft(String l) {
+    lang = l;
+    L.en = l == 'en';
+    notifyListeners();
+  }
+
+  void setLang(String l) {
+    lang = l;
+    langChosen = true;
+    L.en = l == 'en';
+    _changed();
+  }
+
+  void setNotif(NotifSettings n) {
+    notif = n;
+    _planChanged();
+  }
+
+  void saveStepsEn(String id, List<String> steps) {
+    stepsEn[id] = steps;
     _changed();
   }
 
