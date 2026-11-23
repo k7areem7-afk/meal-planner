@@ -559,7 +559,7 @@ class _FridgePickerState extends State<FridgePicker> {
                     child: AnimatedScale(
                       scale: sel ? 1 : 0,
                       duration: const Duration(milliseconds: 180),
-                      child: const Icon(Icons.check_circle,
+                      child: Icon(Icons.check_circle,
                           color: Brand.green, size: 20),
                     ),
                   ),

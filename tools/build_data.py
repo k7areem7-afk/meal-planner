@@ -128,6 +128,8 @@ for r in REC:
             errors.append(f"{rid}: {iid} {u}: {e}")
             continue
         ids.append(iid)
+        if iid == "veg_oil" and b >= 200:
+            g *= 0.15  # deep frying: only part of the oil is eaten
         n = i["nutr"]
         kcal += n[0] * g / 100
         p += n[1] * g / 100

@@ -16,7 +16,6 @@ class WeekEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final p = app.prefs;
     return Scaffold(
       appBar: AppBar(
         title: const Text('تعديل الأسبوع'),
@@ -30,16 +29,37 @@ class WeekEditor extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-        children: [
-          const Text(
-              'اضغط ⇄ لاستبدال أي وجبة باقتراحنا أو باختيارك، 🔒 لقفلها، أو 🗑 لحذفها.'),
-          for (var day = 0; day < 7; day++)
-            FadeSlideIn(
-              index: day,
-              child: _day(context, app, p, day),
-            ),
-        ],
+        children: const [WeekList()],
       ),
+    );
+  }
+}
+
+/// The seven days with swap / lock / delete on every meal.
+class WeekList extends StatelessWidget {
+  const WeekList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    final p = app.prefs;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Card(
+          color: Brand.yellow.withValues(alpha: 0.15),
+          child: const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text(
+                '⇄ استبدل أي وجبة باقتراحي أو ببحثك أو اكتبها بنفسك · 🔒 قفلها · 🗑 احذفها · اضغط على الوجبة لتشوف الوصفة'),
+          ),
+        ),
+        for (var day = 0; day < 7; day++)
+          FadeSlideIn(
+            index: day,
+            child: _day(context, app, p, day),
+          ),
+      ],
     );
   }
 
@@ -61,7 +81,7 @@ class WeekEditor extends StatelessWidget {
               const Spacer(),
               Text(
                   '🔥 ${macros.kcal.round()}${p.kcalTarget ? ' / ${p.kcal}' : ''} سعرة',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Brand.orange, fontWeight: FontWeight.w700)),
             ]),
             const Divider(),

@@ -80,7 +80,7 @@ class _PlanScreenState extends State<PlanScreen> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace:
-            Container(decoration: const BoxDecoration(gradient: Brand.headerGradient)),
+            Container(decoration: BoxDecoration(gradient: Brand.headerGradient)),
         foregroundColor: Colors.white,
         title: const Text('خطة الأسبوع',
             style: TextStyle(

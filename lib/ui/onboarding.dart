@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../engine.dart';
 import '../models.dart';
 import '../state.dart';
 import 'anim.dart';
 import 'pref_editors.dart';
+import 'colors_page.dart';
 import 'theme.dart';
+import 'week_editor.dart';
 import 'widgets.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -17,7 +18,6 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final prefs = Prefs();
   int step = 0; // 0 welcome, 1..n sections, n+1 preview
-  PlanResult? preview;
   bool _init = false;
 
   static const sections = PrefSection.values;
@@ -35,11 +35,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _next() {
     if (step == sections.length) {
-      final app = AppScope.read(context);
-      setState(() {
-        preview = app.planner(prefs).generate();
-        step++;
-      });
+      AppScope.read(context).startPreview(prefs);
+      setState(() => step++);
       return;
     }
     setState(() => step++);
@@ -132,12 +129,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ];
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: Brand.headerGradient),
+        decoration: BoxDecoration(gradient: Brand.headerGradient),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
+                Align(
+                  alignment: AlignmentDirectional.topEnd,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(foregroundColor: Colors.white),
+                    onPressed: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const ColorsPage())),
+                    icon: const Icon(Icons.palette_outlined),
+                    label: const Text('الألوان'),
+                  ),
+                ),
                 const Spacer(),
                 const Bounce(
                     child: Text('🍽️', style: TextStyle(fontSize: 96))),
@@ -197,60 +204,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _preview() {
     final app = AppScope.of(context);
-    final res = preview!;
-    final pr = app.planner(prefs).pr;
+    final total = app.total;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
             onPressed: _back, icon: const Icon(Icons.arrow_back_rounded)),
         title: const Text('خطتك جاهزة 🎉'),
         actions: [
-          IconButton(
-            tooltip: 'خطة ثانية',
-            onPressed: () =>
-                setState(() => preview = app.planner(prefs).generate()),
+          TextButton.icon(
+            onPressed: () => app.generate(),
             icon: const Icon(Icons.refresh),
+            label: const Text('خطة ثانية'),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          BudgetBar(total: res.total, budget: prefs.budget),
-          if (!res.fits)
+          BudgetBar(total: total, budget: prefs.budget),
+          if (total > prefs.budget + 0.01)
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(
-                'ما قدرنا ننزل تحت الميزانية بالكامل مع تفضيلاتك. جرّب ترفع الميزانية أو تقلل الاستبعادات، أو استبدل وجبات بنفسك.',
+                'الخطة فوق الميزانية. استبدل وجبات بأرخص منها (⇄ يوريك فرق السعر)، أو ارفع الميزانية.',
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
-          for (var day = 0; day < 7; day++) ...[
-            SectionTitle(dayName(DateTime.now().add(Duration(days: day)))),
-            for (final m in res.meals.where((m) => m.day == day))
-              FadeSlideIn(
-                index: slotOrder.indexOf(m.slot),
-                child: Builder(builder: (_) {
-                  final r = app.c.recipeById[m.recipeId]!;
-                  final pot = partnerOf(res.meals, m) != null;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: FoodTile(r.emoji, size: 44),
-                    title: Text(r.title,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(m.leftover
-                            ? '${slotNames[m.slot]} · بواقي من أمس 🍱'
-                            : '${slotNames[m.slot]} · ${fmtMoney(pr.costPerServing(r) * m.servings)}${pot ? ' · تكفي يومين' : ''}'),
-                        MacroRow.of(r),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-          ],
+          const SizedBox(height: 8),
+          const Text('عدّل اللي تبيه قبل ما تعتمد الخطة:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          const WeekList(),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -259,16 +243,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: FilledButton(
             style:
                 FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-            onPressed: () {
-              final app = AppScope.read(context);
-              app.prefs = prefs;
-              app.onboarded = true;
-              app.plan = res.meals;
-              app.planStart = DateTime(DateTime.now().year,
-                  DateTime.now().month, DateTime.now().day);
-              app.updatePrefs(prefs);
-            },
-            child: const Text('اعتمد الخطة'),
+            onPressed: () => AppScope.read(context).approvePlan(),
+            child: const Text('اعتمد الخطة ✓'),
           ),
         ),
       ),

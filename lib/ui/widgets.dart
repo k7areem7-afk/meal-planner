@@ -86,6 +86,13 @@ class BudgetBar extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             AnimatedBar(value: ratio, color: color),
+            if (total < 0.01)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                    '🧊 التكلفة صفر لأن كل مكونات الخطة متعلّمة إنها موجودة عندك. لو مو صحيح، عدّل "الموجود عندك".',
+                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+              ),
           ],
         ),
       ),
@@ -333,7 +340,7 @@ class OptionCard extends StatelessWidget {
               scale: selected ? 1 : 0,
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutBack,
-              child: const Icon(Icons.check_circle, color: Brand.green),
+              child: Icon(Icons.check_circle, color: Brand.green),
             ),
           ),
         ]),

@@ -332,7 +332,7 @@ class _StepCardState extends State<StepCard> {
                     .copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   tilePadding: EdgeInsets.zero,
-                  title: const Text('💡 شرح للمبتدئ',
+                  title: Text('💡 شرح للمبتدئ',
                       style: TextStyle(
                           color: Brand.orange, fontWeight: FontWeight.w700)),
                   children: [
@@ -561,7 +561,7 @@ class _CookModeState extends State<CookMode> {
                     width: 110,
                     height: 110,
                     alignment: Alignment.center,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: Brand.headerGradient,
                       shape: BoxShape.circle,
                     ),
@@ -580,7 +580,7 @@ class _CookModeState extends State<CookMode> {
                 Center(
                   child: timer != null && timer!.isActive
                       ? Text(_mmss(remaining),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 44,
                               fontWeight: FontWeight.w900,
                               color: Brand.orange))

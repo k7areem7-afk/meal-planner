@@ -55,7 +55,7 @@ class _AiScreenState extends State<AiScreen> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
-            decoration: const BoxDecoration(gradient: Brand.warmGradient)),
+            decoration: BoxDecoration(gradient: Brand.warmGradient)),
         title: const Text('اقترح لي من الموجود ✨',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
         foregroundColor: Colors.white,

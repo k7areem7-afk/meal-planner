@@ -6,6 +6,7 @@ import '../ai.dart';
 import '../engine.dart';
 import '../models.dart';
 import '../state.dart';
+import 'colors_page.dart';
 import 'pref_editors.dart';
 import 'price_editor.dart';
 import 'recipe_screen.dart';
@@ -67,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(children: [
         const _Header('✨ الذكاء الاصطناعي'),
         ListTile(
-          leading: const Icon(Icons.auto_awesome, color: Brand.orange),
+          leading: Icon(Icons.auto_awesome, color: Brand.orange),
           title: const Text('مفتاح Gemini'),
           subtitle: Text(app.gemini == null
               ? 'غير مضاف: الاقتراحات من المكتبة تشتغل بدونه'
@@ -83,6 +84,14 @@ class SettingsScreen extends StatelessWidget {
           trailing: const Icon(Icons.chevron_left),
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const MyRecipesPage())),
+        ),
+        ListTile(
+          leading: const Icon(Icons.palette_outlined),
+          title: const Text('ألوان التطبيق'),
+          subtitle: Text('${paletteById(app.themeId).emoji} ${paletteById(app.themeId).name}'),
+          trailing: const Icon(Icons.chevron_left),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const ColorsPage())),
         ),
         const Divider(),
         const _Header('التفضيلات'),
@@ -142,7 +151,7 @@ class SettingsScreen extends StatelessWidget {
         AboutListTile(
           icon: const Icon(Icons.info_outline),
           applicationName: 'سفرة',
-          applicationVersion: '0.3.0',
+          applicationVersion: '0.4.0',
           aboutBoxChildren: [
             Text(
                 'مخطط وجبات أسبوعي بالميزانية. ${app.c.recipes.length} وصفة. الأسعار والقيم الغذائية تقديرية.'),
@@ -288,7 +297,7 @@ class _AiSettingsPageState extends State<AiSettingsPage>
                   label: const Text('نسخته؟ الصقه واربط'),
                 ),
                 if (waiting)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text('⏳ ننتظرك ترجع بالمفتاح منسوخ...',
                         style: TextStyle(color: Brand.orange)),

@@ -24,6 +24,8 @@ class AppState extends ChangeNotifier {
   List<CustomItem> custom = [];
   bool showPantry = false;
   String geminiKey = '';
+  String themeId = 'mango';
+  String themeMode = 'system'; // system | light | dark
   String geminiModel = Gemini.defaultModel;
   List<Recipe> userRecipes = [];
 
@@ -73,6 +75,8 @@ class AppState extends ChangeNotifier {
       c.register(r);
     }
     geminiKey = (j['geminiKey'] as String?) ?? '';
+    themeId = (j['themeId'] as String?) ?? 'mango';
+    themeMode = (j['themeMode'] as String?) ?? 'system';
     geminiModel = (j['geminiModel'] as String?) ?? Gemini.defaultModel;
     onboarded = j['onboarded'] == true;
     prefs = Prefs.fromJson((j['prefs'] as Map).cast<String, dynamic>());
@@ -107,6 +111,8 @@ class AppState extends ChangeNotifier {
         'showPantry': showPantry,
         'v': dataVersion,
         'geminiKey': geminiKey,
+        'themeId': themeId,
+        'themeMode': themeMode,
         'geminiModel': geminiModel,
         'userRecipes': userRecipes.map((r) => r.toJson()).toList(),
       };
@@ -271,6 +277,31 @@ class AppState extends ChangeNotifier {
   }
 
   bool isSaved(String id) => userRecipes.any((r) => r.id == id);
+
+  void setTheme(String id) {
+    themeId = id;
+    _changed();
+  }
+
+  void setThemeMode(String m) {
+    themeMode = m;
+    _changed();
+  }
+
+  /// Onboarding: show an editable plan before it is approved.
+  void startPreview(Prefs p) {
+    prefs = p;
+    final res = planner().generate();
+    plan = res.meals;
+    planStart = _today();
+    checked.clear();
+    notifyListeners();
+  }
+
+  void approvePlan() {
+    onboarded = true;
+    _changed();
+  }
 
   void setAi(String key, String model) {
     geminiKey = key.trim();

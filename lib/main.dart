@@ -19,6 +19,8 @@ class SufraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
+    final pal = paletteById(app.themeId);
+    Brand.current = pal;
     return MaterialApp(
       title: 'سفرة',
       debugShowCheckedModeBanner: false,
@@ -29,8 +31,11 @@ class SufraApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
+      theme: buildTheme(Brightness.light, pal),
+      darkTheme: buildTheme(Brightness.dark, pal),
+      themeMode: app.themeMode == 'light'
+          ? ThemeMode.light
+          : (app.themeMode == 'dark' ? ThemeMode.dark : ThemeMode.system),
       home: !app.loaded
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : (app.onboarded ? const Shell() : const OnboardingScreen()),

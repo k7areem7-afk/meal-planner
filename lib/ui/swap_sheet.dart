@@ -180,7 +180,7 @@ class _SwapSheetState extends State<_SwapSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (!ok)
-                          const Text('⚠️ ما تناسب تفضيلاتك',
+                          Text('⚠️ ما تناسب تفضيلاتك',
                               style: TextStyle(color: Brand.orange)),
                         MacroRow.of(r),
                       ],
