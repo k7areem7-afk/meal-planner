@@ -219,7 +219,7 @@ class _AiScreenState extends State<AiScreen> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(tx('${r.minutes} دقيقة · ${r.lines.length} مكونات', '${r.minutes} min · ${r.lines.length} ingredients')
+                        Text(tx('${r.minutes} دقيقة · ${r.lines.length} مكونات', '${r.minutes} min · ${r.lines.length} ingredients') +
                             tx('${app.isSaved(r.id) ? ' · محفوظة ✓' : ''}', '${app.isSaved(r.id) ? ' · saved ✓' : ''}')),
                         MacroRow.of(r),
                       ],

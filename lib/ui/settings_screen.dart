@@ -345,8 +345,8 @@ class _AiSettingsPageState extends State<AiSettingsPage>
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 10),
                 Text(
-                    tx('1. اضغط الزر تحت، بتفتح صفحة قوقل (بحسابك على الجوال).\n', '1. Tap the button below. Google’s page opens (with your phone’s account).\n')
-                    tx('2. اضغط "Create API key". لو سألك عن مشروع، اختار أي واحد أو "Create project".\n', '2. Tap "Create API key". If it asks for a project, pick any or "Create project".\n')
+                    tx('1. اضغط الزر تحت، بتفتح صفحة قوقل (بحسابك على الجوال).\n', '1. Tap the button below. Google’s page opens (with your phone’s account).\n') +
+                    tx('2. اضغط "Create API key". لو سألك عن مشروع، اختار أي واحد أو "Create project".\n', '2. Tap "Create API key". If it asks for a project, pick any or "Create project".\n') +
                     tx('3. اضغط زر النسخ جنب المفتاح وارجع للتطبيق، ونربطه تلقائياً.', '3. Tap the copy button next to the key and come back. We link it automatically.'),
                     style: TextStyle(height: 1.7)),
                 const SizedBox(height: 12),

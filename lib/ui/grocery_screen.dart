@@ -183,7 +183,7 @@ class GroceryScreen extends StatelessWidget {
               fontWeight: FontWeight.w600,
               decoration: checked ? TextDecoration.lineThrough : null)),
       subtitle: Text(
-          tx('تحتاج ${fmtBase(g.amount, g.ing)} · ${g.packs} × ${fmtPack(size, g.ing)}', 'Need ${fmtBase(g.amount, g.ing)} · ${g.packs} × ${fmtPack(size, g.ing)}')
+          tx('تحتاج ${fmtBase(g.amount, g.ing)} · ${g.packs} × ${fmtPack(size, g.ing)}', 'Need ${fmtBase(g.amount, g.ing)} · ${g.packs} × ${fmtPack(size, g.ing)}') +
           tx('${g.recipeIds.length > 1 ? ' · لـ ${g.recipeIds.length} وصفات' : ''}', '${g.recipeIds.length > 1 ? ' · for ${g.recipeIds.length} recipes' : ''}')),
       secondary: InkWell(
         borderRadius: BorderRadius.circular(8),

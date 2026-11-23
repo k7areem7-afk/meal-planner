@@ -293,7 +293,7 @@ class PrefEditor extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Text(
-                tx('يعني تقريباً ${fmtMoney(perMeal)} للوجبة الواحدة لكل شخص ', 'That is about ${fmtMoney(perMeal)} per meal per person ')
+                tx('يعني تقريباً ${fmtMoney(perMeal)} للوجبة الواحدة لكل شخص ', 'That is about ${fmtMoney(perMeal)} per meal per person ') +
                 tx('(${prefs.people} × ${prefs.meals.length} وجبات × 7 أيام).', '(${prefs.people} × ${prefs.meals.length} meals × 7 days).'),
                 textAlign: TextAlign.center,
               ),
